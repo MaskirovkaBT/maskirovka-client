@@ -1,0 +1,5 @@
+textual
+textual-dev
+httpx
+pydantic-settings
+pydantic

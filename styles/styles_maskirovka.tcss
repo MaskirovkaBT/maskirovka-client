@@ -1,0 +1,34 @@
+#right {
+    width: 20%;
+}
+
+#eras {
+    height: 15%;
+}
+
+#main-content {
+    height: 1fr;
+}
+
+.border {
+    border: heavy green;
+}
+
+.selected-border {
+    border: yellow;
+}
+
+RadioSet#eras {
+    layout: grid;
+    height: auto;
+    grid-size: 3;
+    grid-rows: auto;
+}
+
+RadioSet#factions {
+    height: 1fr;
+}
+
+RadioSet#eras > RadioButton {
+    width: auto;
+}

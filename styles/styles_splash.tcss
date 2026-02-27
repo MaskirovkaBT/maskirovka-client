@@ -1,0 +1,28 @@
+SplashScreen {
+    align: center middle;
+    opacity: 1.0;
+}
+
+#splash {
+    text-align: center;
+    width: 100%;
+    color: green;
+    dock: top;
+    padding: 1;
+}
+
+MatrixRain {
+    color: red;
+    height: 1fr;
+    width: 100%;
+    content-align: center middle;
+    text-opacity: 60%;
+}
+
+#loader {
+    text-align: center;
+    width: 100%;
+    color: yellow;
+    dock: bottom;
+    padding: 1;
+}
