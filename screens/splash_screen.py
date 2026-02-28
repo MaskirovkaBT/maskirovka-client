@@ -22,7 +22,7 @@ class MatrixRain(Static):
         self.update("\n".join(lines))
 
 class SplashScreen(Screen):
-    CSS_PATH = 'styles/styles_splash.tcss'
+    CSS_PATH = '../styles/styles_splash.tcss'
 
     def compose(self) -> ComposeResult:
         yield Static(

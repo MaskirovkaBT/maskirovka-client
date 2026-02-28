@@ -5,7 +5,7 @@ from textual.widgets import Button, Label
 
 
 class ErrorScreen(Screen):
-    CSS_PATH = 'styles/styles_error.tcss'
+    CSS_PATH = '../styles/styles_error.tcss'
 
     def __init__(self, title: str):
         super().__init__()

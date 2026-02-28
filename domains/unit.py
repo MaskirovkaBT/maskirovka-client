@@ -1,20 +1,4 @@
-from enum import Enum, auto
-
 from pydantic import BaseModel
-
-
-class Blocks(Enum):
-    ERAS = auto()
-    FACTIONS = auto()
-    MAIN_CONTENT = auto()
-
-class Era(BaseModel):
-    era_id: int
-    title: str
-
-class Faction(BaseModel):
-    faction_id: int
-    title: str
 
 class Unit(BaseModel):
     unit_id: int
