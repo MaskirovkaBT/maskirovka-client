@@ -1,0 +1,37 @@
+SortScreen {
+    align: center middle;
+    background: rgba(0, 0, 0, 0.5);
+}
+
+#sort-container {
+    width: 40;
+    height: auto;
+    border: thick $primary;
+    background: $surface;
+    padding-left: 1;
+    padding-right: 1;
+}
+
+#sort-title {
+    text-style: bold;
+    content-align: center middle;
+    margin-bottom: 1;
+}
+
+#field-select {
+    margin-bottom: 1;
+}
+
+#order-select {
+    margin-bottom: 1;
+}
+
+#button-container {
+    align: center middle;
+    height: auto;
+    margin-top: 1;
+}
+
+#button-container Button {
+    margin: 0 1;
+}

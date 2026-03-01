@@ -51,12 +51,16 @@ class ApiClient:
         self,
         era_id: int,
         faction_id: int,
-        page: int = 1
+        page: int = 1,
+        sort_by: str | None = None,
+        sort_order: str | None = None
     ) -> tuple[list[Unit], int, int]:
-        data = await self._get(
-            "/units",
-            params={"era_id": era_id, "faction_id": faction_id, "page": page}
-        )
+        params: dict = {"era_id": era_id, "faction_id": faction_id, "page": page}
+        if sort_by is not None:
+            params["sort_by"] = sort_by
+        if sort_order is not None:
+            params["sort_order"] = sort_order
+        data = await self._get("/units", params=params)
 
         items = data.get("items", [])
         units = TypeAdapter(list[Unit]).validate_python(items)

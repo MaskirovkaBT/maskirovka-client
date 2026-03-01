@@ -2,6 +2,7 @@ import asyncio
 
 from textual import events, work
 from textual.app import App, ComposeResult
+from textual.screen import ModalScreen
 from textual.containers import Vertical, Horizontal, Container
 from textual.widget import Widget
 from textual.widgets import Header, Footer, RadioSet, RadioButton, DataTable, Label
@@ -12,6 +13,7 @@ from domains.era import Era
 from domains.faction import Faction
 from domains.unit import Unit
 from screens.error_screen import ErrorScreen
+from screens.sort_screen import SortScreen
 from screens.splash_screen import SplashScreen
 from screens.unit_details_screen import UnitDetailsScreen
 
@@ -22,6 +24,7 @@ class Maskirovka(App):
     BINDINGS = [
         ('q', 'quit', 'Выход'),
         ('ctrl+s', 'search', 'Поиск'),
+        ('ctrl+o', 'sort', 'Сортировка'),
         ('ctrl+left', 'prev_page', 'Пред. страница'),
         ('ctrl+right', 'next_page', 'След. страница'),
     ]
@@ -42,6 +45,8 @@ class Maskirovka(App):
         self.units: list[Unit] | None = None
         self.page = 1
         self.pages = 0
+        self.sort_by: str = 'title'
+        self.sort_order: str = 'asc'
         self.api_client = ApiClient()
 
     async def on_mount(self) -> None:
@@ -71,6 +76,9 @@ class Maskirovka(App):
         await self._hide_splash()
 
     def on_key(self, event: events.Key) -> None:
+        if isinstance(self.screen, ModalScreen):
+            return
+
         if event.key == "tab":
             event.prevent_default()
             self._select_block()
@@ -91,6 +99,8 @@ class Maskirovka(App):
             return self.page > 1
         if action == "next_page":
             return self.page < self.pages
+        if action == "sort":
+            return self.units is not None and len(self.units) > 0
         return True
 
     def compose(self) -> ComposeResult:
@@ -133,6 +143,21 @@ class Maskirovka(App):
 
     async def action_search(self) -> None:
         self._search(page=1)
+
+    async def action_sort(self) -> None:
+        async def handle_sort(result: dict | None) -> None:
+            if result is not None:
+                self.sort_by = result['field']
+                self.sort_order = result['order']
+                self._search(page=1)
+
+        await self.push_screen(
+            SortScreen(
+                current_field=self.sort_by,
+                current_order=self.sort_order
+            ),
+            handle_sort
+        )
 
     async def action_prev_page(self) -> None:
         if self.page - 1 <= 0:
@@ -242,7 +267,9 @@ class Maskirovka(App):
             self.units, self.page, self.pages = await self.api_client.get_units(
                 era_id=era_id,
                 faction_id=faction_id,
-                page=page
+                page=page,
+                sort_by=self.sort_by,
+                sort_order=self.sort_order
             )
 
             table = self.query_one(f"#{self.blocks[Blocks.MAIN_CONTENT]}", DataTable)
@@ -250,10 +277,10 @@ class Maskirovka(App):
             table.clear()
 
             if not self.units:
-                table.add_row('—', 'Нет данных', '—', '—', '—', '—', '—', '—', '—')
+                table.add_row('—', '-', '—', '—', '—', '—', '—', '—', '—')
                 table.loading = False
                 pagination_label = self.query_one("#pagination-info", Label)
-                pagination_label.update(f'Страница: {self.page} из {self.pages} (нет результатов)')
+                pagination_label.update(f'Страница: 0 из 0 (нет результатов)')
                 self.refresh_bindings()
                 return
 
