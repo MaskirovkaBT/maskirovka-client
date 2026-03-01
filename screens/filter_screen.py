@@ -43,14 +43,6 @@ class FilterScreen(ModalScreen):
         self.types = [('Все', self.ALL_VALUE)] + [(t, t) for t in (types or [])]
         self.roles = [('Все', self.ALL_VALUE)] + [(t, t) for t in (roles or [])]
 
-    def _get_select_initial_value(self, key: str, options: list[tuple[str, str]]) -> str:
-        value = self.current_filters.get(key)
-        valid_values = [opt[1] for opt in options]
-        if value in valid_values:
-            return value
-
-        return self.ALL_VALUE
-
     def compose(self) -> ComposeResult:
         unit_type_value = self._get_select_initial_value('unit_type', self.types)
         role_value = self._get_select_initial_value('role', self.roles)
@@ -118,6 +110,14 @@ class FilterScreen(ModalScreen):
                 yield Button('Применить', variant='primary', id='apply')
                 yield Button('Сбросить', id='reset')
                 yield Button('Отмена', id='cancel')
+
+    def _get_select_initial_value(self, key: str, options: list[tuple[str, str]]) -> str:
+        value = self.current_filters.get(key)
+        valid_values = [opt[1] for opt in options]
+        if value in valid_values:
+            return value
+
+        return self.ALL_VALUE
 
     def _get_input_value(self, input_id: str) -> str | None:
         input_widget = self.query_one(f'#{input_id}', Input)

@@ -64,14 +64,16 @@ class ApiClient:
     async def get_units(
         self,
         era_id: int,
-        faction_id: int,
+        faction_ids: list[int],
         page: int = 1,
         sort_by: str | None = None,
         sort_order: str | None = None,
         filters: dict | None = None
     ) -> tuple[list[Unit], int, int]:
-        params: dict = {"era_id": era_id, "faction_id": faction_id, "page": page}
+        params: dict = {"era_id": era_id, "page": page}
         headers: dict = {}
+
+        params["faction_id"] = faction_ids
 
         if sort_by is not None:
             params["sort_by"] = sort_by

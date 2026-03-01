@@ -25,12 +25,23 @@ RadioSet#eras {
     grid-rows: auto;
 }
 
-RadioSet#factions {
+RadioSet#eras > RadioButton {
+    width: auto;
+}
+
+SelectionList#factions {
     height: 1fr;
 }
 
-RadioSet#eras > RadioButton {
-    width: auto;
+SelectionList#factions > .selection-list--option {
+    height: auto;
+}
+
+#faction-hint {
+    height: auto;
+    max-height: 3;
+    color: $text-muted;
+    content-align: center middle;
 }
 
 #pagination-info {

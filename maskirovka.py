@@ -2,10 +2,10 @@ import asyncio
 
 from textual import events, work
 from textual.app import App, ComposeResult
-from textual.screen import ModalScreen
 from textual.containers import Vertical, Horizontal, Container
+from textual.screen import ModalScreen
 from textual.widget import Widget
-from textual.widgets import Header, Footer, RadioSet, RadioButton, DataTable, Label
+from textual.widgets import Header, Footer, RadioSet, RadioButton, DataTable, Label, SelectionList, Static
 
 from domains.api_client import ApiClient, ApiError
 from domains.blocks import Blocks
@@ -101,6 +101,13 @@ class Maskirovka(App):
         if unit:
             self.push_screen(UnitDetailsScreen(unit=unit))
 
+    def on_selection_list_selection_highlighted(self, event: SelectionList.SelectionHighlighted) -> None:
+        if event.selection_list.id == self.blocks[Blocks.FACTIONS]:
+            hint_label = self.query_one('#faction-hint', Static)
+            if self.factions and 0 <= event.selection_index < len(self.factions):
+                faction = self.factions[event.selection_index]
+                hint_label.update(faction.title)
+
     def check_action(self, action: str, parameters: tuple[object, ...]) -> bool | None:
         if action == "prev_page":
             return self.page > 1
@@ -134,11 +141,12 @@ class Maskirovka(App):
                     ),
                     id='left'
                 ),
-                Container(
-                    RadioSet(
+                Vertical(
+                    SelectionList(
                         id=self.blocks[Blocks.FACTIONS],
                         classes='border',
                     ),
+                    Static('Выберите фракцию', id='faction-hint', shrink=True),
                     id='right'
                 )
             ),
@@ -206,7 +214,7 @@ class Maskirovka(App):
                     view = self.query_one(f"#{self.blocks[Blocks.MAIN_CONTENT]}", DataTable)
                 else:
                     self.current_block = Blocks.FACTIONS
-                    view = self.query_one(f"#{self.blocks[Blocks.FACTIONS]}", RadioSet)
+                    view = self.query_one(f"#{self.blocks[Blocks.FACTIONS]}", SelectionList)
             case Blocks.FACTIONS:
                 if backward:
                     self.current_block = Blocks.ERAS
@@ -217,7 +225,7 @@ class Maskirovka(App):
             case Blocks.MAIN_CONTENT:
                 if backward:
                     self.current_block = Blocks.FACTIONS
-                    view = self.query_one(f"#{self.blocks[Blocks.FACTIONS]}", RadioSet)
+                    view = self.query_one(f"#{self.blocks[Blocks.FACTIONS]}", SelectionList)
                 else:
                     self.current_block = Blocks.ERAS
                     view = self.query_one(f"#{self.blocks[Blocks.ERAS]}", RadioSet)
@@ -254,15 +262,19 @@ class Maskirovka(App):
     async def _load_factions(self) -> None:
         self.factions = await self.api_client.get_factions()
 
-        radio_set = self.query_one(f"#{self.blocks[Blocks.FACTIONS]}", RadioSet)
-        for item in self.factions:
-            await radio_set.mount(RadioButton(item.title))
+        selection_list = self.query_one(f"#{self.blocks[Blocks.FACTIONS]}", SelectionList)
+        options = [(item.title, item.faction_id) for item in self.factions]
+        selection_list.add_options(options)
 
     async def _load_types(self) -> None:
         self.types = await self.api_client.get_types()
 
     async def _load_roles(self) -> None:
         self.roles = await self.api_client.get_roles()
+
+    def _get_selected_faction_ids(self) -> list[int]:
+        selection_list = self.query_one(f"#{self.blocks[Blocks.FACTIONS]}", SelectionList)
+        return list(selection_list.selected)
 
     @work(exclusive=False)
     async def _search(self, page: int) -> None:
@@ -273,30 +285,28 @@ class Maskirovka(App):
                 )
                 return
 
-            radio_set_factions = self.query_one(f"#{self.blocks[Blocks.FACTIONS]}", RadioSet)
-            faction_index = radio_set_factions.pressed_index
+            faction_ids = self._get_selected_faction_ids()
 
             radio_set_eras = self.query_one(f"#{self.blocks[Blocks.ERAS]}", RadioSet)
             era_index = radio_set_eras.pressed_index
 
-            if faction_index is None or era_index is None or faction_index < 0 or era_index < 0:
+            if not faction_ids or era_index is None or era_index < 0:
                 await self.push_screen(
                     ErrorScreen(title='Следует вначале выбрать эру и фракцию')
                 )
                 return
 
-            if era_index >= len(self.eras) or faction_index >= len(self.factions):
+            if era_index >= len(self.eras):
                 await self.push_screen(
                     ErrorScreen(title='Некорректный выбор эры или фракции')
                 )
                 return
 
             era_id = self.eras[era_index].era_id
-            faction_id = self.factions[faction_index].faction_id
 
             self.units, self.page, self.pages = await self.api_client.get_units(
                 era_id=era_id,
-                faction_id=faction_id,
+                faction_ids=faction_ids,
                 page=page,
                 sort_by=self.sort_by,
                 sort_order=self.sort_order,
