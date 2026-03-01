@@ -101,12 +101,32 @@ class Maskirovka(App):
         if unit:
             self.push_screen(UnitDetailsScreen(unit=unit))
 
+    def on_radio_set_changed(self, event: RadioSet.Changed) -> None:
+        if isinstance(self.screen, ModalScreen):
+            return
+        self._set_selected_block(Blocks.ERAS)
+
     def on_selection_list_selection_highlighted(self, event: SelectionList.SelectionHighlighted) -> None:
+        if isinstance(self.screen, ModalScreen):
+            return
+
+        self._set_selected_block(Blocks.FACTIONS)
+
         if event.selection_list.id == self.blocks[Blocks.FACTIONS]:
             hint_label = self.query_one('#faction-hint', Static)
             if self.factions and 0 <= event.selection_index < len(self.factions):
                 faction = self.factions[event.selection_index]
                 hint_label.update(faction.title)
+
+    def on_data_table_row_highlighted(self, event: DataTable.RowHighlighted) -> None:
+        if isinstance(self.screen, ModalScreen):
+            return
+        self._set_selected_block(Blocks.MAIN_CONTENT)
+
+    def on_data_table_focus(self, event: events.Focus) -> None:
+        if isinstance(self.screen, ModalScreen):
+            return
+        self._set_selected_block(Blocks.MAIN_CONTENT)
 
     def check_action(self, action: str, parameters: tuple[object, ...]) -> bool | None:
         if action == "prev_page":
@@ -200,6 +220,18 @@ class Maskirovka(App):
         if self.page + 1 > self.pages:
             return
         self._search(page=self.page + 1)
+
+    def _set_selected_block(self, block: Blocks) -> None:
+        if self.current_block == block:
+            return
+
+        current = self.query_one(f"#{self.blocks[self.current_block]}")
+        current.remove_class('selected-border')
+
+        self.current_block = block
+
+        new_block = self.query_one(f"#{self.blocks[block]}")
+        new_block.add_class('selected-border')
 
     def _select_block(self, backward: bool = False) -> None:
         block = self.query_one(f"#{self.blocks[self.current_block]}")

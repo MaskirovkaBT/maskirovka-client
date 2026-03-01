@@ -6,20 +6,49 @@ from textual.widgets import Static
 
 
 class MatrixRain(Static):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.columns = []
+        self.chars = "ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝ" + string.ascii_uppercase + string.digits
+
     def on_mount(self) -> None:
-        self.set_interval(0.1, self.update_matrix)
+        self.set_interval(0.05, self.update_matrix)
 
     def update_matrix(self) -> None:
-        chars = string.ascii_uppercase + string.digits + "ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿ"
         width = self.size.width
         height = self.size.height
 
-        lines = []
-        for _ in range(height):
-            line = "".join(random.choice(chars) if random.random() > 0.7 else " " for _ in range(width))
-            lines.append(line)
+        if width == 0 or height == 0:
+            return
 
-        self.update("\n".join(lines))
+        if len(self.columns) != width:
+            self.columns = [
+                {
+                    'drop_pos': random.randint(-20, height),
+                    'speed': random.randint(1, 3),
+                    'length': random.randint(5, 15),
+                }
+                for _ in range(width)
+            ]
+
+        screen = [[' ' for _ in range(width)] for _ in range(height)]
+
+        for x, col in enumerate(self.columns):
+            col['drop_pos'] += col['speed']
+
+            if col['drop_pos'] - col['length'] > height:
+                col['drop_pos'] = random.randint(-10, 0)
+                col['speed'] = random.randint(1, 3)
+                col['length'] = random.randint(5, 15)
+
+            for i in range(col['length']):
+                y = int(col['drop_pos']) - i
+                if 0 <= y < height:
+                    screen[y][x] = random.choice(self.chars)
+
+        output = "\n".join("".join(row) for row in screen)
+        self.update(output)
+
 
 class SplashScreen(Screen):
     CSS_PATH = '../styles/styles_splash.tcss'
@@ -33,7 +62,6 @@ class SplashScreen(Screen):
 ██║╚██╔╝██║██╔══██║╚════██║██╔═██╗ ██║██╔══██╗██║   ██║╚██╗ ██╔╝██╔═██╗ ██╔══██║
 ██║ ╚═╝ ██║██║  ██║███████║██║  ██╗██║██║  ██║╚██████╔╝ ╚████╔╝ ██║  ██╗██║  ██║
 ╚═╝     ╚═╝╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝╚═╝╚═╝  ╚═╝ ╚═════╝   ╚═══╝  ╚═╝  ╚═╝╚═╝  ╚═╝
-                                                                                                                                                                                                                                                             
             """,
             id="splash",
         )
