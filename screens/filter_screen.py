@@ -77,7 +77,7 @@ class FilterScreen(ModalScreen):
                     with Horizontal(classes='specials-row'):
                         yield Input(
                             value=self.current_filters.get('specials', ''),
-                            placeholder='Введите спец. правила...',
+                            placeholder='Способности через запятую',
                             id='filter-specials-input'
                         )
                         yield Select(

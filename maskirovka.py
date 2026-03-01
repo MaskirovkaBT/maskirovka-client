@@ -133,10 +133,6 @@ class Maskirovka(App):
             return self.page > 1
         if action == "next_page":
             return self.page < self.pages
-        if action == "sort":
-            return self.units is not None and len(self.units) > 0
-        if action == "filter":
-            return self.units is not None and len(self.units) > 0
         return True
 
     def compose(self) -> ComposeResult:

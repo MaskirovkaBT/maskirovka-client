@@ -1,7 +1,7 @@
 from textual.app import ComposeResult
 from textual.containers import Vertical, Horizontal
 from textual.screen import ModalScreen
-from textual.widgets import Label, Button
+from textual.widgets import Label, Button, Link
 
 from domains.unit import Unit
 
@@ -14,8 +14,9 @@ class UnitDetailsScreen(ModalScreen):
         self.unit = unit
 
     def compose(self) -> ComposeResult:
+        url = f"http://masterunitlist.info/Unit/Details/{self.unit.unit_id}"
         with Vertical(id="unit-card"):
-            yield Label(f"Детальная информация: {self.unit.title}", id="title")
+            yield Link(f"Детальная информация: {self.unit.title}", id="title", url=url)
             yield Label(f"Тип: {self.unit.unit_type}")
             yield Label(f"Роль: {self.unit.role}")
             yield Label(f"Стоимость: {self.unit.pv}")
