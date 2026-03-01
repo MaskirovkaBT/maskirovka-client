@@ -1,0 +1,24 @@
+UnitDetailsScreen {
+    align: center middle;
+    background: rgba(0, 0, 0, 0.5);
+}
+
+#unit-card {
+    width: 60;
+    height: auto;
+    border: thick $primary;
+    background: $surface;
+    padding-left: 1;
+    padding-right: 1;
+}
+
+#title {
+    text-style: bold;
+    margin-bottom: 1;
+}
+
+#button-container {
+    align: center middle;
+    margin-top: 1;
+    height: auto;
+}

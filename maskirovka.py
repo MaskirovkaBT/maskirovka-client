@@ -13,6 +13,7 @@ from domains.settings import settings
 from domains.unit import Unit
 from screens.error_screen import ErrorScreen
 from screens.splash_screen import SplashScreen
+from screens.unit_details_screen import UnitDetailsScreen
 
 
 class Maskirovka(App):
@@ -48,7 +49,6 @@ class Maskirovka(App):
         table = self.query_one(f"#{self.blocks[Blocks.MAIN_CONTENT]}", DataTable)
         table.add_columns(
             'Название',
-            'Тип',
             'Роль',
             'Стоимость',
             'Движение',
@@ -70,6 +70,14 @@ class Maskirovka(App):
         elif event.key == "shift+tab":
             event.prevent_default()
             self._select_block(backward=True)
+
+    def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
+        unit_id = event.row_key.value
+
+        unit = next((u for u in self.units if str(u.unit_id) == unit_id), None)
+
+        if unit:
+            self.push_screen(UnitDetailsScreen(unit=unit))
 
     def check_action(self, action: str, parameters: tuple[object, ...]) -> bool | None:
         if action == "prev_page":
@@ -250,7 +258,6 @@ class Maskirovka(App):
                 for item in self.units:
                     table.add_row(
                         item.title,
-                        item.unit_type,
                         item.role,
                         str(item.pv),
                         item.mv,
