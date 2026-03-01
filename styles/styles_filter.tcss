@@ -33,6 +33,11 @@ FilterScreen {
     content-align: right middle;
 }
 
+#filter-unit-type-select,
+#filter-role-select {
+    width: 100%;
+}
+
 .specials-row {
     height: auto;
 }

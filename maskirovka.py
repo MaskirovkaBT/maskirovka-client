@@ -43,6 +43,8 @@ class Maskirovka(App):
         self.splash_screen = SplashScreen()
         self.eras: list[Era] | None = None
         self.factions: list[Faction] | None = None
+        self.types: list[str] | None = None
+        self.roles: list[str] | None = None
         self.exception_on_splash: Exception | None = None
         self.units: list[Unit] | None = None
         self.page = 1
@@ -71,7 +73,9 @@ class Maskirovka(App):
         try:
             await asyncio.gather(
                 self._load_eras(),
-                self._load_factions()
+                self._load_factions(),
+                self._load_types(),
+                self._load_roles()
             )
         except Exception as e:
             self.exception_on_splash = e
@@ -171,7 +175,11 @@ class Maskirovka(App):
                 self._search(page=1)
 
         await self.push_screen(
-            FilterScreen(current_filters=self.filters),
+            FilterScreen(
+                current_filters=self.filters,
+                types=self.types,
+                roles=self.roles
+            ),
             handle_filter
         )
 
@@ -249,6 +257,12 @@ class Maskirovka(App):
         radio_set = self.query_one(f"#{self.blocks[Blocks.FACTIONS]}", RadioSet)
         for item in self.factions:
             await radio_set.mount(RadioButton(item.title))
+
+    async def _load_types(self) -> None:
+        self.types = await self.api_client.get_types()
+
+    async def _load_roles(self) -> None:
+        self.roles = await self.api_client.get_roles()
 
     @work(exclusive=False)
     async def _search(self, page: int) -> None:

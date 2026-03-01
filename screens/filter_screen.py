@@ -29,11 +29,32 @@ class FilterScreen(ModalScreen):
         ('lte', '<=', 'Меньше или равно'),
     ]
 
-    def __init__(self, current_filters: dict | None = None, **kwargs):
+    ALL_VALUE = 'ALL'
+
+    def __init__(
+        self,
+        current_filters: dict | None = None,
+        types: list[str] | None = None,
+        roles: list[str] | None = None,
+        **kwargs
+    ):
         super().__init__(**kwargs)
         self.current_filters = current_filters or {}
+        self.types = [('Все', self.ALL_VALUE)] + [(t, t) for t in (types or [])]
+        self.roles = [('Все', self.ALL_VALUE)] + [(t, t) for t in (roles or [])]
+
+    def _get_select_initial_value(self, key: str, options: list[tuple[str, str]]) -> str:
+        value = self.current_filters.get(key)
+        valid_values = [opt[1] for opt in options]
+        if value in valid_values:
+            return value
+
+        return self.ALL_VALUE
 
     def compose(self) -> ComposeResult:
+        unit_type_value = self._get_select_initial_value('unit_type', self.types)
+        role_value = self._get_select_initial_value('role', self.roles)
+
         with Vertical(id='filter-container'):
             yield Label('Фильтрация юнитов', id='filter-title')
 
@@ -47,17 +68,17 @@ class FilterScreen(ModalScreen):
                     )
 
                     yield Label('Тип:')
-                    yield Input(
-                        value=self.current_filters.get('unit_type', ''),
-                        placeholder='Введите тип...',
-                        id='filter-unit-type-input'
+                    yield Select(
+                        self.types,
+                        value=unit_type_value,
+                        id='filter-unit-type-select'
                     )
 
                     yield Label('Роль:')
-                    yield Input(
-                        value=self.current_filters.get('role', ''),
-                        placeholder='Введите роль...',
-                        id='filter-role-input'
+                    yield Select(
+                        self.roles,
+                        value=role_value,
+                        id='filter-role-select'
                     )
 
                     yield Label('Спец. правила:')
@@ -69,7 +90,7 @@ class FilterScreen(ModalScreen):
                         )
                         yield Select(
                             [('ИЛИ (любое)', 'or'), ('И (все)', 'and')],
-                            value=self.current_filters.get('specials_mode', 'or'),
+                            value=self.current_filters.get('specials_mode') or 'or',
                             id='filter-specials-mode',
                             classes='specials-mode-select'
                         )
@@ -88,7 +109,7 @@ class FilterScreen(ModalScreen):
                             )
                             yield Select(
                                 [(mode[2], mode[0]) for mode in self.COMPARE_MODES],
-                                value=self.current_filters.get(f'{field_key}_mode', 'eq'),
+                                value=self.current_filters.get(f'{field_key}_mode') or 'eq',
                                 id=f'filter-{field_key}-mode',
                                 classes='mode-select'
                             )
@@ -116,12 +137,12 @@ class FilterScreen(ModalScreen):
             if title:
                 filters['title'] = title
 
-            unit_type = self._get_input_value('filter-unit-type-input')
-            if unit_type:
+            unit_type = self._get_select_value('filter-unit-type-select')
+            if unit_type and unit_type != self.ALL_VALUE:
                 filters['unit_type'] = unit_type
 
-            role = self._get_input_value('filter-role-input')
-            if role:
+            role = self._get_select_value('filter-role-select')
+            if role and role != self.ALL_VALUE:
                 filters['role'] = role
 
             specials = self._get_input_value('filter-specials-input')

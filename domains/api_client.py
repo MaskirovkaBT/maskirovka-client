@@ -53,6 +53,14 @@ class ApiClient:
     async def get_factions(self) -> list[Faction]:
         return await self._fetch_list("/factions", Faction)
 
+    async def get_types(self) -> list[str]:
+        data = await self._get("/types")
+        return TypeAdapter(list[str]).validate_python(data)
+
+    async def get_roles(self) -> list[str]:
+        data = await self._get("/roles")
+        return TypeAdapter(list[str]).validate_python(data)
+
     async def get_units(
         self,
         era_id: int,
