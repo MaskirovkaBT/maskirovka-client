@@ -1,3 +1,4 @@
+from textual.app import ComposeResult
 from textual.containers import Vertical, Horizontal
 from textual.screen import ModalScreen
 from textual.widgets import Label, Button
@@ -12,7 +13,7 @@ class UnitDetailsScreen(ModalScreen):
         super().__init__(**kwargs)
         self.unit = unit
 
-    def compose(self):
+    def compose(self) -> ComposeResult:
         with Vertical(id="unit-card"):
             yield Label(f"Детальная информация: {self.unit.title}", id="title")
             yield Label(f"Тип: {self.unit.unit_type}")

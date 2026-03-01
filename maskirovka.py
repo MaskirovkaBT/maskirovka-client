@@ -1,15 +1,15 @@
-import httpx
-from pydantic import TypeAdapter
+import asyncio
+
 from textual import events, work
 from textual.app import App, ComposeResult
 from textual.containers import Vertical, Horizontal, Container
 from textual.widget import Widget
-from textual.widgets import Header, Footer, RadioSet, RadioButton, DataTable
+from textual.widgets import Header, Footer, RadioSet, RadioButton, DataTable, Label
 
+from domains.api_client import ApiClient, ApiError
 from domains.blocks import Blocks
 from domains.era import Era
 from domains.faction import Faction
-from domains.settings import settings
 from domains.unit import Unit
 from screens.error_screen import ErrorScreen
 from screens.splash_screen import SplashScreen
@@ -42,6 +42,7 @@ class Maskirovka(App):
         self.units: list[Unit] | None = None
         self.page = 1
         self.pages = 0
+        self.api_client = ApiClient()
 
     async def on_mount(self) -> None:
         await self.push_screen(self.splash_screen)
@@ -59,8 +60,14 @@ class Maskirovka(App):
             'Структура',
         )
 
-        self._load_eras()
-        self._load_factions()
+        try:
+            await asyncio.gather(
+                self._load_eras(),
+                self._load_factions()
+            )
+        except Exception as e:
+            self.exception_on_splash = e
+
         await self._hide_splash()
 
     def on_key(self, event: events.Key) -> None:
@@ -81,10 +88,8 @@ class Maskirovka(App):
 
     def check_action(self, action: str, parameters: tuple[object, ...]) -> bool | None:
         if action == "prev_page":
-            print(f"prev_page: {self.page}")
             return self.page > 1
         if action == "next_page":
-            print(f"next_page: {self.page}")
             return self.page < self.pages
         return True
 
@@ -121,6 +126,7 @@ class Maskirovka(App):
             id='main'
         )
 
+        yield Label('Страница: —', id='pagination-info')
         yield Footer(
             show_command_palette=False,
         )
@@ -186,97 +192,100 @@ class Maskirovka(App):
 
         if self.exception_on_splash:
             await self.push_screen(
-                ErrorScreen(title=f"{type(self.exception_on_splash).__name__}: {self.exception_on_splash}")
+                ErrorScreen(title=f'{type(self.exception_on_splash).__name__}: {self.exception_on_splash}')
             )
 
-    @work(exclusive=False)
     async def _load_eras(self) -> None:
-        try:
-            async with httpx.AsyncClient() as client:
-                response = await client.get(f"{settings.api_base_url}/eras")
-                data = response.json()
-                self.eras = TypeAdapter(list[Era]).validate_python(data)
+        self.eras = await self.api_client.get_eras()
 
-                radio_set = self.query_one(f"#{self.blocks[Blocks.ERAS]}", RadioSet)
-                for item in self.eras:
-                    await radio_set.mount(RadioButton(item.title))
+        radio_set = self.query_one(f"#{self.blocks[Blocks.ERAS]}", RadioSet)
+        for item in self.eras:
+            await radio_set.mount(RadioButton(item.title))
 
-        except Exception as e:
-            self.exception_on_splash = e
-
-    @work(exclusive=False)
     async def _load_factions(self) -> None:
-        try:
-            async with httpx.AsyncClient() as client:
-                response = await client.get(f"{settings.api_base_url}/factions")
-                data = response.json()
-                self.factions = TypeAdapter(list[Faction]).validate_python(data)
+        self.factions = await self.api_client.get_factions()
 
-                radio_set = self.query_one(f"#{self.blocks[Blocks.FACTIONS]}", RadioSet)
-                for item in self.factions:
-                    await radio_set.mount(RadioButton(item.title))
-
-        except Exception as e:
-            self.exception_on_splash = e
+        radio_set = self.query_one(f"#{self.blocks[Blocks.FACTIONS]}", RadioSet)
+        for item in self.factions:
+            await radio_set.mount(RadioButton(item.title))
 
     @work(exclusive=False)
     async def _search(self, page: int) -> None:
         try:
-            async with httpx.AsyncClient() as client:
-                radio_set_factions = self.query_one(f"#{self.blocks[Blocks.FACTIONS]}", RadioSet)
-                faction_index = radio_set_factions.pressed_index
-
-                radio_set_eras = self.query_one(f"#{self.blocks[Blocks.ERAS]}", RadioSet)
-                era_index = radio_set_eras.pressed_index
-
-                if faction_index < 0 or era_index < 0:
-                    await self.push_screen(
-                        ErrorScreen(title='Следует вначале выбрать эру и фракцию')
-                    )
-                    return
-
-                era_id = self.eras[era_index].era_id
-                faction_id = self.factions[faction_index].faction_id
-
-                response = await client.get(
-                    f"{settings.api_base_url}"
-                    f"/units?era_id={era_id}"
-                    f"&faction_id={faction_id}"
-                    f"&page={page}"
+            if not self.eras or not self.factions:
+                await self.push_screen(
+                    ErrorScreen(title='Данные не загружены. Подождите завершения загрузки.')
                 )
-                data = response.json()
+                return
 
-                items = data.get('items', [])
-                self.units = TypeAdapter(list[Unit]).validate_python(items)
-                self.page = data['page']
-                self.pages = data['pages']
+            radio_set_factions = self.query_one(f"#{self.blocks[Blocks.FACTIONS]}", RadioSet)
+            faction_index = radio_set_factions.pressed_index
 
-                table = self.query_one(f"#{self.blocks[Blocks.MAIN_CONTENT]}", DataTable)
-                table.loading = True
-                table.clear()
+            radio_set_eras = self.query_one(f"#{self.blocks[Blocks.ERAS]}", RadioSet)
+            era_index = radio_set_eras.pressed_index
 
-                for item in self.units:
-                    table.add_row(
-                        item.title,
-                        item.role,
-                        str(item.pv),
-                        item.mv,
-                        str(item.short),
-                        str(item.medium),
-                        str(item.long),
-                        str(item.armor),
-                        str(item.struc),
-                        key=str(item.unit_id)
-                    )
+            if faction_index is None or era_index is None or faction_index < 0 or era_index < 0:
+                await self.push_screen(
+                    ErrorScreen(title='Следует вначале выбрать эру и фракцию')
+                )
+                return
 
+            if era_index >= len(self.eras) or faction_index >= len(self.factions):
+                await self.push_screen(
+                    ErrorScreen(title='Некорректный выбор эры или фракции')
+                )
+                return
+
+            era_id = self.eras[era_index].era_id
+            faction_id = self.factions[faction_index].faction_id
+
+            self.units, self.page, self.pages = await self.api_client.get_units(
+                era_id=era_id,
+                faction_id=faction_id,
+                page=page
+            )
+
+            table = self.query_one(f"#{self.blocks[Blocks.MAIN_CONTENT]}", DataTable)
+            table.loading = True
+            table.clear()
+
+            if not self.units:
+                table.add_row('—', 'Нет данных', '—', '—', '—', '—', '—', '—', '—')
                 table.loading = False
-                table.focus()
-
+                pagination_label = self.query_one("#pagination-info", Label)
+                pagination_label.update(f'Страница: {self.page} из {self.pages} (нет результатов)')
                 self.refresh_bindings()
+                return
 
+            for item in self.units:
+                table.add_row(
+                    item.title,
+                    item.role,
+                    str(item.pv),
+                    item.mv,
+                    str(item.short),
+                    str(item.medium),
+                    str(item.long),
+                    str(item.armor),
+                    str(item.struc),
+                    key=str(item.unit_id)
+                )
+
+            table.loading = False
+            table.focus()
+
+            pagination_label = self.query_one("#pagination-info", Label)
+            pagination_label.update(f'Страница: {self.page} из {self.pages}')
+
+            self.refresh_bindings()
+
+        except ApiError as e:
+            await self.push_screen(
+                ErrorScreen(title=f'Ошибка API: {e}')
+            )
         except Exception as e:
             await self.push_screen(
-                ErrorScreen(title=f"{type(e).__name__}: {e}")
+                ErrorScreen(title=f'{type(e).__name__}: {e}')
             )
 
 
