@@ -1,0 +1,84 @@
+FilterScreen {
+    align: center middle;
+    background: rgba(0, 0, 0, 0.5);
+}
+
+#filter-container {
+    width: 80;
+    height: 90%;
+    border: thick $primary;
+    background: $surface;
+    padding: 1 2;
+}
+
+#filter-title {
+    text-style: bold;
+    content-align: center middle;
+    margin-bottom: 1;
+}
+
+#filter-scroll {
+    height: 1fr;
+    width: 100%;
+}
+
+#filter-grid {
+    grid-size: 2;
+    grid-gutter: 1;
+    grid-columns: 15 1fr;
+    height: auto;
+}
+
+#filter-grid Label {
+    content-align: right middle;
+}
+
+.specials-row {
+    height: auto;
+}
+
+.specials-row Input {
+    width: 2fr;
+}
+
+.specials-mode-select {
+    width: 1fr;
+}
+
+#numeric-label {
+    margin-top: 1;
+    margin-bottom: 1;
+    text-style: underline;
+}
+
+#numeric-filters-grid {
+    grid-size: 3;
+    grid-gutter: 1;
+    height: auto;
+}
+
+.numeric-filter-group {
+    height: auto;
+}
+
+.numeric-filter-group Label {
+    text-style: bold;
+}
+
+.numeric-input {
+    width: 100%;
+}
+
+.mode-select {
+    width: 100%;
+}
+
+#button-container {
+    align: center middle;
+    height: auto;
+    margin-top: 1;
+}
+
+#button-container Button {
+    margin: 0 1;
+}

@@ -13,6 +13,7 @@ from domains.era import Era
 from domains.faction import Faction
 from domains.unit import Unit
 from screens.error_screen import ErrorScreen
+from screens.filter_screen import FilterScreen
 from screens.sort_screen import SortScreen
 from screens.splash_screen import SplashScreen
 from screens.unit_details_screen import UnitDetailsScreen
@@ -25,6 +26,7 @@ class Maskirovka(App):
         ('q', 'quit', 'Выход'),
         ('ctrl+s', 'search', 'Поиск'),
         ('ctrl+o', 'sort', 'Сортировка'),
+        ('ctrl+f', 'filter', 'Фильтр'),
         ('ctrl+left', 'prev_page', 'Пред. страница'),
         ('ctrl+right', 'next_page', 'След. страница'),
     ]
@@ -47,6 +49,7 @@ class Maskirovka(App):
         self.pages = 0
         self.sort_by: str = 'title'
         self.sort_order: str = 'asc'
+        self.filters: dict = {}
         self.api_client = ApiClient()
 
     async def on_mount(self) -> None:
@@ -100,6 +103,8 @@ class Maskirovka(App):
         if action == "next_page":
             return self.page < self.pages
         if action == "sort":
+            return self.units is not None and len(self.units) > 0
+        if action == "filter":
             return self.units is not None and len(self.units) > 0
         return True
 
@@ -157,6 +162,17 @@ class Maskirovka(App):
                 current_order=self.sort_order
             ),
             handle_sort
+        )
+
+    async def action_filter(self) -> None:
+        async def handle_filter(result: dict | None) -> None:
+            if result is not None:
+                self.filters = result
+                self._search(page=1)
+
+        await self.push_screen(
+            FilterScreen(current_filters=self.filters),
+            handle_filter
         )
 
     async def action_prev_page(self) -> None:
@@ -269,7 +285,8 @@ class Maskirovka(App):
                 faction_id=faction_id,
                 page=page,
                 sort_by=self.sort_by,
-                sort_order=self.sort_order
+                sort_order=self.sort_order,
+                filters=self.filters if self.filters else None
             )
 
             table = self.query_one(f"#{self.blocks[Blocks.MAIN_CONTENT]}", DataTable)
