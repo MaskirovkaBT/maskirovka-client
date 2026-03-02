@@ -70,17 +70,7 @@ class Maskirovka(App):
             'Структура',
         )
 
-        try:
-            await asyncio.gather(
-                self._load_eras(),
-                self._load_factions(),
-                self._load_types(),
-                self._load_roles()
-            )
-        except Exception as e:
-            self.exception_on_splash = e
-
-        await self._hide_splash()
+        self._load_initial_data()
 
     def on_key(self, event: events.Key) -> None:
         if isinstance(self.screen, ModalScreen):
@@ -216,6 +206,20 @@ class Maskirovka(App):
         if self.page + 1 > self.pages:
             return
         self._search(page=self.page + 1)
+
+    @work(exclusive=False)
+    async def _load_initial_data(self) -> None:
+        try:
+            await asyncio.gather(
+                self._load_eras(),
+                self._load_factions(),
+                self._load_types(),
+                self._load_roles()
+            )
+        except Exception as e:
+            self.exception_on_splash = e
+
+        await self._hide_splash()
 
     def _set_selected_block(self, block: Blocks) -> None:
         if self.current_block == block:
