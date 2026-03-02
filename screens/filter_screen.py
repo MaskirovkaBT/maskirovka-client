@@ -1,10 +1,12 @@
 from textual.app import ComposeResult
+from textual.binding import Binding
 from textual.containers import Vertical, Horizontal, Grid, VerticalScroll
 from textual.screen import ModalScreen
 from textual.widgets import Label, Button, Input, Select
 
 
 class FilterScreen(ModalScreen):
+    BINDINGS = [Binding('escape', 'cancel', 'Отмена')]
     CSS_PATH = '../styles/styles_filter.tcss'
 
     NUMERIC_FIELDS = [
@@ -111,24 +113,6 @@ class FilterScreen(ModalScreen):
                 yield Button('Сбросить', id='reset')
                 yield Button('Отмена', id='cancel')
 
-    def _get_select_initial_value(self, key: str, options: list[tuple[str, str]]) -> str:
-        value = self.current_filters.get(key)
-        valid_values = [opt[1] for opt in options]
-        if value in valid_values:
-            return value
-
-        return self.ALL_VALUE
-
-    def _get_input_value(self, input_id: str) -> str | None:
-        input_widget = self.query_one(f'#{input_id}', Input)
-        value = input_widget.value.strip()
-        return value if value else None
-
-    def _get_select_value(self, select_id: str) -> str | None:
-        select_widget = self.query_one(f'#{select_id}', Select)
-        value = select_widget.value
-        return value if value != Select.BLANK else None
-
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == 'apply':
             filters = {}
@@ -169,3 +153,24 @@ class FilterScreen(ModalScreen):
 
         elif event.button.id == 'cancel':
             self.dismiss(None)
+
+    def action_cancel(self) -> None:
+        self.dismiss(None)
+
+    def _get_select_initial_value(self, key: str, options: list[tuple[str, str]]) -> str:
+        value = self.current_filters.get(key)
+        valid_values = [opt[1] for opt in options]
+        if value in valid_values:
+            return value
+
+        return self.ALL_VALUE
+
+    def _get_input_value(self, input_id: str) -> str | None:
+        input_widget = self.query_one(f'#{input_id}', Input)
+        value = input_widget.value.strip()
+        return value if value else None
+
+    def _get_select_value(self, select_id: str) -> str | None:
+        select_widget = self.query_one(f'#{select_id}', Select)
+        value = select_widget.value
+        return value if value != Select.BLANK else None

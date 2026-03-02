@@ -1,10 +1,12 @@
 from textual.app import ComposeResult
+from textual.binding import Binding
 from textual.containers import Grid
 from textual.screen import Screen
 from textual.widgets import Button, Label
 
 
 class ErrorScreen(Screen):
+    BINDINGS = [Binding('escape', 'close', 'Закрыть')]
     CSS_PATH = '../styles/styles_error.tcss'
 
     def __init__(self, title: str):
@@ -20,4 +22,7 @@ class ErrorScreen(Screen):
         )
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
+        self.app.pop_screen()
+
+    def action_close(self) -> None:
         self.app.pop_screen()

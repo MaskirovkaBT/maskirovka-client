@@ -1,4 +1,5 @@
 from textual.app import ComposeResult
+from textual.binding import Binding
 from textual.containers import Vertical, Horizontal
 from textual.screen import ModalScreen
 from textual.widgets import Label, Button, Link
@@ -7,6 +8,7 @@ from domains.unit import Unit
 
 
 class UnitDetailsScreen(ModalScreen):
+    BINDINGS = [Binding('escape', 'close', 'Закрыть')]
     CSS_PATH = '../styles/styles_unit_details.tcss'
 
     def __init__(self, unit: Unit, **kwargs):
@@ -37,3 +39,6 @@ class UnitDetailsScreen(ModalScreen):
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "close":
             self.app.pop_screen()
+
+    def action_close(self) -> None:
+        self.app.pop_screen()

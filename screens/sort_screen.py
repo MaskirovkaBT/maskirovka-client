@@ -1,10 +1,12 @@
 from textual.app import ComposeResult
+from textual.binding import Binding
 from textual.containers import Vertical, Horizontal
 from textual.screen import ModalScreen
 from textual.widgets import Label, Button, RadioSet, RadioButton
 
 
 class SortScreen(ModalScreen):
+    BINDINGS = [Binding('escape', 'cancel', 'Отмена')]
     CSS_PATH = '../styles/styles_sort.tcss'
 
     SORT_FIELDS = [
@@ -82,3 +84,6 @@ class SortScreen(ModalScreen):
             })
         elif event.button.id == 'cancel':
             self.dismiss(None)
+
+    def action_cancel(self) -> None:
+        self.dismiss(None)
