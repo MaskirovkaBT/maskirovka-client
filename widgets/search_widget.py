@@ -2,7 +2,7 @@ from textual.app import ComposeResult
 from textual.containers import Container, Vertical, Horizontal
 from textual.message import Message
 from textual.reactive import reactive
-from textual.widgets import RadioSet, DataTable, SelectionList, Static
+from textual.widgets import RadioSet, DataTable, SelectionList, Static, Label
 
 
 class SearchWidget(Container):
@@ -12,13 +12,20 @@ class SearchWidget(Container):
     ]
 
     current_block: reactive[str] = reactive('eras')
+    _row_unit_ids: list[int] = []
 
     class UnitSelected(Message):
         def __init__(self, unit_id: str) -> None:
             self.unit_id = unit_id
             super().__init__()
 
-    class Mounted(Message): pass
+    class AddToHangar(Message):
+        def __init__(self, unit_id: str) -> None:
+            self.unit_id = unit_id
+            super().__init__()
+
+    class Mounted(Message):
+        pass
 
     def on_mount(self) -> None:
         self.setup_table()
@@ -30,6 +37,7 @@ class SearchWidget(Container):
                 Vertical(
                     RadioSet(id='eras', classes='border selected-border'),
                     DataTable(id='main-content', cursor_type='row', classes='border'),
+                    Label('Страница: —', id='pagination-info'),
                 ),
                 id='left'
             ),
@@ -113,11 +121,13 @@ class SearchWidget(Container):
     def populate_table(self, units: list) -> None:
         table = self.query_one('#main-content', DataTable)
         table.clear()
+        self._row_unit_ids = []
 
         if not units:
             table.add_row('—', '-', '—', '—', '—', '—', '—', '—', '—')
         else:
             for item in units:
+                self._row_unit_ids.append(item.unit_id)
                 table.add_row(
                     item.title,
                     item.role,
@@ -149,3 +159,9 @@ class SearchWidget(Container):
     def focus_table(self) -> None:
         table = self.query_one('#main-content', DataTable)
         table.focus()
+
+    def add_to_hangar(self) -> None:
+        table = self.query_one('#main-content', DataTable)
+        if table.cursor_row is not None and table.cursor_row < len(self._row_unit_ids):
+            unit_id = self._row_unit_ids[table.cursor_row]
+            self.post_message(self.AddToHangar(str(unit_id)))

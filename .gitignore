@@ -1,5 +1,8 @@
 PROJECT_CONTEXT.md
 
+# Application data
+data/
+
 *.db
 .idea
 *.db-shm

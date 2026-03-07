@@ -1,9 +1,10 @@
 from textual import work
 from textual.app import App, ComposeResult
-from textual.containers import Container
-from textual.widgets import Header, Footer, Label, TabbedContent, TabPane
+from textual.coordinate import Coordinate
+from textual.widgets import Header, Footer, Label, TabbedContent, TabPane, DataTable
 
 from domains.api_client import ApiError
+from domains.hangar_service import HangarService
 from domains.search_state import SearchState
 from domains.unit_service import UnitService
 from screens.error_screen import ErrorScreen
@@ -11,11 +12,15 @@ from screens.filter_screen import FilterScreen
 from screens.sort_screen import SortScreen
 from screens.splash_screen import SplashScreen
 from screens.unit_details_screen import UnitDetailsScreen
+from widgets.hangar_widget import HangarWidget
 from widgets.search_widget import SearchWidget
 
 
 class Maskirovka(App):
-    CSS_PATH = 'styles/styles_maskirovka.tcss'
+    CSS_PATH = [
+        'styles/styles_maskirovka.tcss',
+        'styles/styles_hangar.tcss',
+    ]
 
     BINDINGS = [
         ('q', 'quit', 'Выход'),
@@ -24,6 +29,9 @@ class Maskirovka(App):
         ('ctrl+f', 'filter', 'Фильтр'),
         ('ctrl+left', 'prev_page', 'Пред. страница'),
         ('ctrl+right', 'next_page', 'След. страница'),
+        ('ctrl+a', 'add_to_hangar', 'В ангар'),
+        ('a', 'increase_units', 'Увеличить кол-во'),
+        ('d', 'decrease_units', 'Уменьшить кол-во'),
     ]
 
     def __init__(self):
@@ -31,19 +39,19 @@ class Maskirovka(App):
 
         self.state = SearchState()
         self.service = UnitService()
+        self.hangar_service = HangarService()
         self.splash_screen = SplashScreen()
         self.exception_on_splash: Exception | None = None
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True, icon='≡')
 
-        with TabbedContent(id='main-tabs', initial="search-tab"):
+        with TabbedContent(id='main-tabs', initial='search-tab'):
             with TabPane('Поиск', id='search-tab'):
                 yield SearchWidget(id='search-widget')
             with TabPane('Ангар', id='hangar-tab'):
-                yield Container(id='hangar-content')
+                yield HangarWidget(id='hangar-widget', service=self.hangar_service)
 
-        yield Label('Страница: —', id='pagination-info')
         yield Footer(show_command_palette=False)
 
     async def on_mount(self) -> None:
@@ -60,23 +68,65 @@ class Maskirovka(App):
 
         tabs = self.query_one('#main-tabs', TabbedContent)
         is_search_active = tabs.active == 'search-tab'
+        is_hangar_active = tabs.active == 'hangar-tab'
 
-        if action in ('search', 'sort', 'filter', 'prev_page', 'next_page'):
+        if action in (
+                'search',
+                'sort',
+                'filter',
+                'prev_page',
+                'next_page',
+                'add_to_hangar'
+        ):
             if not is_search_active:
                 return False
             if action == 'prev_page':
                 return self.state.page > 1
             if action == 'next_page':
                 return self.state.page < self.state.pages
+        elif action in (
+                'increase_units',
+                'decrease_units',
+        ):
+            return is_hangar_active
         return True
 
     def on_tabbed_content_tab_activated(self, event: TabbedContent.TabActivated) -> None:
         self.refresh_bindings()
+        if event.tab.id == 'hangar-tab':
+            hangar_widget = self.query_one('#hangar-widget', HangarWidget)
+            hangar_widget.refresh_data()
 
     def on_search_widget_unit_selected(self, event: SearchWidget.UnitSelected) -> None:
         unit = next((u for u in self.state.units if str(u.unit_id) == event.unit_id), None)
         if unit:
-            self.push_screen(UnitDetailsScreen(unit=unit))
+            self.push_screen(UnitDetailsScreen(
+                unit=unit,
+                hangar_service=self.hangar_service,
+                is_in_hangar=False
+            ))
+
+    def on_search_widget_add_to_hangar(self, event: SearchWidget.AddToHangar) -> None:
+        unit = next((u for u in self.state.units if str(u.unit_id) == event.unit_id), None)
+        if unit:
+            self.hangar_service.add_unit(unit, quantity=1)
+            self.notify(f"{unit.title} добавлен в ангар!")
+            hangar_widget = self.query_one('#hangar-widget', HangarWidget)
+            hangar_widget.refresh_data()
+
+    def on_hangar_widget_unit_selected(self, event: HangarWidget.UnitSelected) -> None:
+        hangar_unit = self.hangar_service.get_by_unit_id(int(event.unit_id))
+        if hangar_unit:
+            self.push_screen(UnitDetailsScreen(
+                unit=hangar_unit.unit,
+                hangar_service=self.hangar_service,
+                initial_comment=event.comment,
+                is_in_hangar=True
+            ))
+
+    async def action_add_to_hangar(self) -> None:
+        search_widget = self.query_one('#search-widget', SearchWidget)
+        search_widget.add_to_hangar()
 
     async def action_search(self) -> None:
         self._search(page=1)
@@ -118,6 +168,30 @@ class Maskirovka(App):
     async def action_next_page(self) -> None:
         if self.state.next_page():
             self._search(page=self.state.page)
+
+    def action_increase_units(self) -> None:
+        table = self.query_one('#hangar-table', DataTable)
+        row_index = table.cursor_row
+        row_key = table.ordered_rows[row_index].key
+        row_index = table.cursor_coordinate.row
+        current_qty = int(table.get_cell_at(Coordinate(row_index, 0)))
+
+        self.hangar_service.increase_quantity(int(row_key.value))
+        table.update_cell_at(Coordinate(row_index, 0), str(current_qty + 1))
+
+    def action_decrease_units(self) -> None:
+        table = self.query_one('#hangar-table', DataTable)
+        row_index = table.cursor_row
+        row_key = table.ordered_rows[row_index].key
+        row_index = table.cursor_coordinate.row
+        current_qty = int(table.get_cell_at(Coordinate(row_index, 0)))
+
+        self.hangar_service.decrease_quantity(int(row_key.value))
+
+        if (current_qty - 1) <= 0:
+            table.remove_row(row_key)
+        else:
+            table.update_cell_at(Coordinate(row_index, 0), str(current_qty - 1))
 
     @work(exclusive=False)
     async def _load_initial_data(self) -> None:

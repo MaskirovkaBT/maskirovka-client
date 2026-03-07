@@ -1,0 +1,7 @@
+HangarWidget {
+    height: 1fr;
+}
+
+#hangar-table {
+    height: 1fr;
+}
