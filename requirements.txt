@@ -1,5 +1,5 @@
-textual
-textual-dev
+textual>=8.0.0
+textual-dev>=8.0.0
 httpx
 pydantic-settings
 pydantic

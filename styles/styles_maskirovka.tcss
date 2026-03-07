@@ -44,6 +44,10 @@ SelectionList#factions > .selection-list--option {
     content-align: center middle;
 }
 
+#main-tabs {
+    height: 1fr;
+}
+
 #pagination-info {
     height: 1;
     content-align: center middle;

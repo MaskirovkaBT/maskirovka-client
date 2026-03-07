@@ -173,4 +173,4 @@ class FilterScreen(ModalScreen):
     def _get_select_value(self, select_id: str) -> str | None:
         select_widget = self.query_one(f'#{select_id}', Select)
         value = select_widget.value
-        return value if value != Select.BLANK else None
+        return value if value != Select.NULL else None
