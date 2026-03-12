@@ -118,18 +118,24 @@ class SearchWidget(Container):
             'Структура',
         )
 
-    def populate_table(self, units: list) -> None:
+    def populate_table(self, units: list, hangar_unit_ids: set[int] | None = None) -> None:
+        from rich.text import Text
         table = self.query_one('#main-content', DataTable)
         table.clear()
         self._row_unit_ids = []
+        hangar_ids = hangar_unit_ids or set()
 
         if not units:
             table.add_row('—', '-', '—', '—', '—', '—', '—', '—', '—')
         else:
             for item in units:
                 self._row_unit_ids.append(item.unit_id)
+                in_hangar = item.unit_id in hangar_ids
+                title_text = Text(item.title)
+                if in_hangar:
+                    title_text.stylize('bold blink2 green')
                 table.add_row(
-                    item.title,
+                    title_text,
                     item.role,
                     str(item.pv),
                     item.mv,

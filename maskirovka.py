@@ -360,7 +360,8 @@ class Maskirovka(App):
                 filters=self.state.filters if self.state.filters else None
             )
 
-            search_widget.populate_table(self.state.units)
+            hangar_ids = {u.unit_id for u in self.hangar_service.get_all()}
+            search_widget.populate_table(self.state.units, hangar_ids)
 
             pagination_label = self.query_one('#pagination-info', Label)
             pagination_label.update(f'Страница: {self.state.page} из {self.state.pages}')
