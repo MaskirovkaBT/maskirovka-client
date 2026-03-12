@@ -6,6 +6,7 @@ from textual.widgets import Label, Button, Link, Input, Static
 
 from domains.unit import Unit
 from domains.hangar_service import HangarService
+from widgets import SearchWidget
 
 
 class UnitDetailsScreen(ModalScreen):
@@ -31,7 +32,7 @@ class UnitDetailsScreen(ModalScreen):
 
     def compose(self) -> ComposeResult:
         url = f"http://masterunitlist.info/Unit/Details/{self.unit.unit_id}"
-        
+
         with Vertical(id="unit-card"):
             yield Link(f"Детальная информация: {self.unit.title}", id="title", url=url)
 
@@ -41,7 +42,7 @@ class UnitDetailsScreen(ModalScreen):
                     f"Комментарий: {self._hangar_unit.comment or 'нет'}",
                     id="hangar-info"
                 )
-            
+
             yield Label(f"Тип: {self.unit.unit_type}")
             yield Label(f"Роль: {self.unit.role}")
             yield Label(f"Стоимость: {self.unit.pv}")
@@ -64,7 +65,7 @@ class UnitDetailsScreen(ModalScreen):
                     placeholder="Добавьте заметку об этом юните...",
                     id="comment-input"
                 )
-            
+
             with Horizontal(id="button-container"):
                 if not self.is_in_hangar:
                     yield Button("В ангар", variant="success", id="add-to-hangar")
@@ -78,23 +79,23 @@ class UnitDetailsScreen(ModalScreen):
             self._add_to_hangar()
 
     def _add_to_hangar(self) -> None:
-        self.hangar_service.add_unit(self.unit, quantity=1)
         self._hangar_unit = self.hangar_service.get_by_unit_id(self.unit.unit_id)
 
-        info = self.query_one("#hangar-info", Static)
+        info = self.query_one_optional("#hangar-info", Static)
         if info:
             info.update(
                 f"В ангаре: {self._hangar_unit.quantity} шт. | "
                 f"Комментарий: {self._hangar_unit.comment or 'нет'}"
             )
-        
-        self.notify(f"{self.unit.title} добавлен в ангар!")
+
+        self.post_message(SearchWidget.AddToHangar(str(self.unit.unit_id)))
+        self.dismiss()
 
     def _save_comment(self) -> None:
         if not self.is_in_hangar:
             return
-        
-        comment_input = self.query("#comment-input")
+
+        comment_input = self.query_one_optional("#comment-input", Input)
         if comment_input:
             comment = comment_input.value.strip()
             if self._hangar_unit and comment != self._hangar_unit.comment:

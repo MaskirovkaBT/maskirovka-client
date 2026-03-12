@@ -1,8 +1,18 @@
 import csv
+import weakref
 from pathlib import Path
+from typing import Protocol, runtime_checkable, Optional
 
-from domains.hangar_unit import HangarUnit
+from domains.grouped_units import GroupedUnits
+from domains.hangar_unit import HangarUnit, extract_base_name
 from domains.unit import Unit
+
+
+@runtime_checkable
+class HangarServiceDelegate(Protocol):
+    def service_did_change_unit_quantity(self, service: 'HangarService', unit_id: int) -> None:
+        """Изменили количество юнита"""
+        pass
 
 
 class HangarService:
@@ -12,7 +22,18 @@ class HangarService:
     def __init__(self):
         self._ensure_data_dir()
         self._units: list[HangarUnit] = []
+        self._delegate: Optional[weakref.ref] = None
         self._load()
+
+    @property
+    def delegate(self) -> Optional[HangarServiceDelegate]:
+        if self._delegate:
+            return self._delegate()
+        return None
+
+    @delegate.setter
+    def delegate(self, value: Optional[HangarServiceDelegate]):
+        self._delegate = weakref.ref(value) if value else None
 
     def get_all(self) -> list[HangarUnit]:
         return self._units.copy()
@@ -23,6 +44,23 @@ class HangarService:
                 return u
         return None
 
+    def is_empty(self) -> bool:
+        return self._units == []
+
+    def is_variants_exists(self, for_model: str) -> bool:
+        grouped_units = self.get_grouped_units()
+        model_base_name = extract_base_name(for_model)
+        return any(u.base_name == model_base_name for u in grouped_units)
+
+    def get_grouped_units(self) -> list[GroupedUnits]:
+        groups: dict[str, list[HangarUnit]] = {}
+        for u in self._units:
+            base = u.base_name
+            if base not in groups:
+                groups[base] = []
+            groups[base].append(u)
+        return [GroupedUnits(name, units) for name, units in sorted(groups.items())]
+
     def increase_quantity(self, unit_id: int) -> None:
         existing = self.get_by_unit_id(unit_id)
         if not existing:
@@ -30,6 +68,9 @@ class HangarService:
 
         existing.quantity += 1
         self._save()
+
+        if d := self.delegate:
+            d.service_did_change_unit_quantity(service=self, unit_id=unit_id)
 
     def decrease_quantity(self, unit_id: int) -> None:
         existing = self.get_by_unit_id(unit_id)
@@ -41,22 +82,15 @@ class HangarService:
             self._units = [u for u in self._units if u.unit_id != unit_id]
         self._save()
 
+        if d := self.delegate:
+            d.service_did_change_unit_quantity(service=self, unit_id=unit_id)
+
     def add_unit(self, unit: Unit, quantity: int = 1, comment: str = '') -> None:
         existing = self.get_by_unit_id(unit.unit_id)
         if existing:
             existing.quantity += quantity
         else:
             self._units.append(HangarUnit(unit, quantity, comment))
-        self._save()
-
-    def remove_unit(self, unit_id: int, quantity: int = 1) -> None:
-        existing = self.get_by_unit_id(unit_id)
-        if not existing:
-            return
-
-        existing.quantity -= quantity
-        if existing.quantity <= 0:
-            self._units = [u for u in self._units if u.unit_id != unit_id]
         self._save()
 
     def update_comment(self, unit_id: int, comment: str) -> None:

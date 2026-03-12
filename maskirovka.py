@@ -5,6 +5,7 @@ from textual.widgets import Header, Footer, Label, TabbedContent, TabPane, DataT
 
 from domains.api_client import ApiError
 from domains.hangar_service import HangarService
+from domains.hangar_unit import extract_base_name
 from domains.search_state import SearchState
 from domains.unit_service import UnitService
 from screens.error_screen import ErrorScreen
@@ -14,6 +15,7 @@ from screens.splash_screen import SplashScreen
 from screens.unit_details_screen import UnitDetailsScreen
 from widgets.hangar_widget import HangarWidget
 from widgets.search_widget import SearchWidget
+import re
 
 
 class Maskirovka(App):
@@ -88,7 +90,19 @@ class Maskirovka(App):
                 'increase_units',
                 'decrease_units',
         ):
+            table = self.query_one('#hangar-table', DataTable)
+            row_index = table.cursor_row
+
+            if row_index is None or row_index < 0 or not table.rows:
+                return is_hangar_active
+
+            row_key = table.ordered_rows[row_index].key
+            key_value = str(row_key.value)
+            if (key_value.startswith(HangarWidget.GROUP_UNITS_PREFIX) or key_value == 'empty') and is_hangar_active:
+                return False
+
             return is_hangar_active
+
         return True
 
     def on_tabbed_content_tab_activated(self, event: TabbedContent.TabActivated) -> None:
@@ -172,26 +186,101 @@ class Maskirovka(App):
     def action_increase_units(self) -> None:
         table = self.query_one('#hangar-table', DataTable)
         row_index = table.cursor_row
-        row_key = table.ordered_rows[row_index].key
-        row_index = table.cursor_coordinate.row
-        current_qty = int(table.get_cell_at(Coordinate(row_index, 0)))
+        if row_index is None or row_index < 0:
+            return
 
-        self.hangar_service.increase_quantity(int(row_key.value))
-        table.update_cell_at(Coordinate(row_index, 0), str(current_qty + 1))
+        row_key = table.ordered_rows[row_index].key
+        key_value = str(row_key.value)
+        if key_value.startswith(HangarWidget.GROUP_UNITS_PREFIX):
+            return
+
+        coordinate = Coordinate(row_index, 0)
+        cell_value = table.get_cell_at(coordinate)
+        current_qty = int(cell_value)
+
+        self.hangar_service.increase_quantity(unit_id=int(key_value))
+
+        prefix = HangarWidget.GROUPED_UNIT_PREFIX if cell_value.startswith(HangarWidget.GROUPED_UNIT_PREFIX) else ''
+        table.update_cell_at(coordinate, f"{prefix}{str(current_qty + 1)}")
+
+        if prefix == HangarWidget.GROUPED_UNIT_PREFIX:
+            cell_title_value = table.get_cell_at(Coordinate(row_index, 1))
+            match = re.search(r'.+?([()\s\w-]+)$', cell_title_value, flags=re.IGNORECASE)
+            if match:
+                base_name = extract_base_name(match.group(1).strip())
+                group_row_key = f"{HangarWidget.GROUP_UNITS_PREFIX}{base_name}"
+                group_values = table.get_row(row_key=group_row_key)
+                if group_values:
+                    group_qty = int(group_values[0])
+                    if group_qty > 0:
+                        table.update_cell(
+                            row_key=group_row_key,
+                            column_key=HangarWidget.COLUMN_QTY_KEY,
+                            value=str(group_qty + 1),
+                            update_width=True
+                        )
 
     def action_decrease_units(self) -> None:
         table = self.query_one('#hangar-table', DataTable)
         row_index = table.cursor_row
-        row_key = table.ordered_rows[row_index].key
-        row_index = table.cursor_coordinate.row
-        current_qty = int(table.get_cell_at(Coordinate(row_index, 0)))
+        if row_index is None or row_index < 0:
+            return
 
-        self.hangar_service.decrease_quantity(int(row_key.value))
+        row_key = table.ordered_rows[row_index].key
+        key_value = str(row_key.value)
+        if key_value.startswith(HangarWidget.GROUP_UNITS_PREFIX):
+            return
+
+        coordinate = Coordinate(row_index, 0)
+        cell_value = table.get_cell_at(coordinate)
+        current_qty = int(cell_value)
+
+        self.hangar_service.decrease_quantity(unit_id=int(key_value))
+
+        prefix = HangarWidget.GROUPED_UNIT_PREFIX if cell_value.startswith(HangarWidget.GROUPED_UNIT_PREFIX) else ''
+        cell_title_value = table.get_cell_at(Coordinate(row_index, 1))
+        match = re.search(r'.+?([()\s\w-]+)$', cell_title_value, flags=re.IGNORECASE)
+
+        def update_group_row(match: re.Match[str]):
+            base_name = match.group(1).strip()
+            group_row_key = f"{HangarWidget.GROUP_UNITS_PREFIX}" \
+                            f"{extract_base_name(base_name)}"
+            group_values = table.get_row(row_key=group_row_key)
+            if group_values:
+                group_qty = int(group_values[0])
+                if group_qty > 0:
+                    table.update_cell(
+                        row_key=group_row_key,
+                        column_key=HangarWidget.COLUMN_QTY_KEY,
+                        value=str(group_qty - 1),
+                        update_width=True
+                    )
 
         if (current_qty - 1) <= 0:
             table.remove_row(row_key)
+
+            if prefix == HangarWidget.GROUPED_UNIT_PREFIX:
+                if match:
+                    base_name = match.group(1).strip()
+                    has_group = self.hangar_service.is_variants_exists(
+                        for_model=base_name
+                    )
+                    if not has_group and (row_index - 1) >= 0:
+                        group_row_key = table.ordered_rows[row_index - 1].key
+                        table.remove_row(group_row_key)
+                    else:
+                        update_group_row(match)
+
+            if not table.rows:
+                hangar_widget = self.query_one('#hangar-widget', HangarWidget)
+                hangar_widget.refresh_data()
         else:
-            table.update_cell_at(Coordinate(row_index, 0), str(current_qty - 1))
+            table.update_cell_at(coordinate, f"{prefix}{str(current_qty - 1)}")
+
+            if prefix == HangarWidget.GROUPED_UNIT_PREFIX:
+                if match:
+                    update_group_row(match)
+
 
     @work(exclusive=False)
     async def _load_initial_data(self) -> None:
