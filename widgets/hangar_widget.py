@@ -87,7 +87,10 @@ class HangarWidget(Container):
 
     def _populate_table(self, should_preserve_cursor: bool = False) -> None:
         table = self.query_one('#hangar-table', DataTable)
+
         row_index = table.cursor_row if should_preserve_cursor else None
+        scroll_offset = table.scroll_offset
+
         table.clear()
         self._unit_ids = []
 
@@ -150,6 +153,7 @@ class HangarWidget(Container):
 
         if row_index:
             table.move_cursor(row=row_index)
+            table.scroll_to(y=scroll_offset.y, animate=False, immediate=True)
 
     def _open_unit_details(self, unit_id: str) -> None:
         hangar_unit = self.service.get_by_unit_id(int(unit_id))
