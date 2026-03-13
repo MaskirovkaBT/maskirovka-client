@@ -1,3 +1,6 @@
+import re
+
+from rich.text import Text
 from textual import work
 from textual.app import App, ComposeResult
 from textual.coordinate import Coordinate
@@ -15,7 +18,6 @@ from screens.splash_screen import SplashScreen
 from screens.unit_details_screen import UnitDetailsScreen
 from widgets.hangar_widget import HangarWidget
 from widgets.search_widget import SearchWidget
-import re
 
 
 class Maskirovka(App):
@@ -127,6 +129,16 @@ class Maskirovka(App):
             self.notify(f"{unit.title} добавлен в ангар!")
             hangar_widget = self.query_one('#hangar-widget', HangarWidget)
             hangar_widget.refresh_data()
+
+            title_text = Text(unit.title)
+            title_text.stylize('bold blink2 green')
+
+            table = self.query_one('#main-content', DataTable)
+            table.update_cell(
+                row_key=event.unit_id,
+                column_key=SearchWidget.COLUMN_TITLE_KEY,
+                value=title_text
+            )
 
     def on_hangar_widget_unit_selected(self, event: HangarWidget.UnitSelected) -> None:
         hangar_unit = self.hangar_service.get_by_unit_id(int(event.unit_id))
@@ -259,6 +271,15 @@ class Maskirovka(App):
         if (current_qty - 1) <= 0:
             table.remove_row(row_key)
 
+            unit = next((u for u in self.state.units if u.unit_id == int(key_value)), None)
+            if unit:
+                search_table = self.query_one('#main-content', DataTable)
+                search_table.update_cell(
+                    row_key=str(unit.unit_id),
+                    column_key=SearchWidget.COLUMN_TITLE_KEY,
+                    value=unit.title
+                )
+
             if prefix == HangarWidget.GROUPED_UNIT_PREFIX:
                 if match:
                     base_name = match.group(1).strip()
@@ -280,7 +301,6 @@ class Maskirovka(App):
             if prefix == HangarWidget.GROUPED_UNIT_PREFIX:
                 if match:
                     update_group_row(match)
-
 
     @work(exclusive=False)
     async def _load_initial_data(self) -> None:

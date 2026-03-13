@@ -14,7 +14,7 @@ from domains.hangar_unit import HangarUnit
 class HangarWidget(Container):
     GROUPED_UNIT_PREFIX: ClassVar[str] = '  '
     GROUP_UNITS_PREFIX: ClassVar[str] = 'group:'
-    COLUMN_QTY_KEY: ClassVar[str] = 'column_qty'
+    COLUMN_QTY_KEY: ClassVar[str] = 'column_qty_key'
 
     _hangar_units: reactive[list[HangarUnit]] = reactive([])
 

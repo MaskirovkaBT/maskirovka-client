@@ -1,3 +1,6 @@
+from typing import ClassVar
+
+from rich.text import Text
 from textual.app import ComposeResult
 from textual.containers import Container, Vertical, Horizontal
 from textual.message import Message
@@ -6,6 +9,8 @@ from textual.widgets import RadioSet, DataTable, SelectionList, Static, Label
 
 
 class SearchWidget(Container):
+    COLUMN_TITLE_KEY: ClassVar[str] = 'column_title_key'
+
     BINDINGS = [
         ('tab', 'next_block', None),
         ('shift+tab', 'prev_block', None),
@@ -23,13 +28,6 @@ class SearchWidget(Container):
         def __init__(self, unit_id: str) -> None:
             self.unit_id = unit_id
             super().__init__()
-
-    class Mounted(Message):
-        pass
-
-    def on_mount(self) -> None:
-        self.setup_table()
-        self.post_message(self.Mounted())
 
     def compose(self) -> ComposeResult:
         yield Horizontal(
@@ -107,7 +105,7 @@ class SearchWidget(Container):
     def setup_table(self) -> None:
         table = self.query_one('#main-content', DataTable)
         table.add_columns(
-            'Название',
+            ('Название', SearchWidget.COLUMN_TITLE_KEY),
             'Роль',
             'Стоимость',
             'Движение',
@@ -119,7 +117,6 @@ class SearchWidget(Container):
         )
 
     def populate_table(self, units: list, hangar_unit_ids: set[int] | None = None) -> None:
-        from rich.text import Text
         table = self.query_one('#main-content', DataTable)
         table.clear()
         self._row_unit_ids = []

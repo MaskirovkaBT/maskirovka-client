@@ -3,3 +3,4 @@ textual-dev>=8.0.0
 httpx
 pydantic-settings
 pydantic
+rich
