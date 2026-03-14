@@ -8,8 +8,6 @@ from widgets.hangar_widget import HangarWidget
 
 
 class HangarTableAdapter:
-    EMPTY_KEY: ClassVar[str] = 'empty'
-
     def __init__(self, table: DataTable, hangar_service: HangarService):
         self.table = table
         self.service = hangar_service
@@ -28,7 +26,7 @@ class HangarTableAdapter:
             pass
 
     def is_empty_row(self, row_key: str) -> bool:
-        return row_key == self.EMPTY_KEY
+        return row_key == 'empty'
 
     def get_unit_info_at_cursor(self) -> tuple[int, int, str] | None:
         row_index = self.table.cursor_row

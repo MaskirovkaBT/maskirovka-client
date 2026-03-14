@@ -5,9 +5,8 @@ from textual.containers import Container
 from textual.reactive import reactive
 from textual.widgets import DataTable
 
-from domains.hangar import GroupedUnits, HangarService, HangarServiceDelegate, HangarUnit
+from domains.hangar import GroupedUnits, HangarService, HangarUnit
 from domains.messages import HangarUnitSelected
-from widgets.hangar_table_adapter import HangarTableAdapter
 
 
 class HangarWidget(Container):
@@ -89,7 +88,7 @@ class HangarWidget(Container):
         self._unit_ids = []
 
         if not self._hangar_units:
-            table.add_row('—', '—', '-', '—', '—', '—', '—', '—', '—', '—', key=HangarTableAdapter.EMPTY_KEY)
+            table.add_row('—', '—', '-', '—', '—', '—', '—', '—', '—', '—', key='empty')
             return
 
         for group in self._grouped:
