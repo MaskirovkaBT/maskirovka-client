@@ -6,7 +6,7 @@ from textual.containers import Container, Vertical, Horizontal
 from textual.reactive import reactive
 from textual.widgets import RadioSet, DataTable, SelectionList, Static, Label
 
-from domains.messages import UnitSelected, AddToHangar
+from domains.messages import SearchUnitSelected, AddToHangar
 
 
 class SearchWidget(Container):
@@ -91,7 +91,7 @@ class SearchWidget(Container):
         self.current_block = 'main-content'
 
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
-        self.post_message(UnitSelected(event.row_key.value))
+        self.post_message(SearchUnitSelected(event.row_key.value))
 
     def setup_table(self) -> None:
         table = self.query_one('#main-content', DataTable)

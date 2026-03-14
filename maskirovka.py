@@ -8,7 +8,7 @@ from textual.widgets import Header, Footer, Label, TabbedContent, TabPane, DataT
 
 from domains import ApiError, HangarService, extract_base_name, SearchState
 from domains.api import ApiClient
-from domains.messages import UnitSelected, AddToHangar
+from domains.messages import SearchUnitSelected, HangarUnitSelected, AddToHangar
 from domains.units import UnitService
 from screens.error_screen import ErrorScreen
 from screens.filter_screen import FilterScreen
@@ -17,6 +17,11 @@ from screens.splash_screen import SplashScreen
 from screens.unit_details_screen import UnitDetailsScreen
 from widgets.hangar_widget import HangarWidget
 from widgets.search_widget import SearchWidget
+
+
+class TabId:
+    SEARCH = 'search-tab'
+    HANGAR = 'hangar-tab'
 
 
 class Maskirovka(App):
@@ -53,10 +58,10 @@ class Maskirovka(App):
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True, icon='≡')
 
-        with TabbedContent(id='main-tabs', initial='search-tab'):
-            with TabPane('Поиск', id='search-tab'):
+        with TabbedContent(id='main-tabs', initial=TabId.SEARCH):
+            with TabPane('Поиск', id=TabId.SEARCH):
                 yield SearchWidget(id='search-widget')
-            with TabPane('Ангар', id='hangar-tab'):
+            with TabPane('Ангар', id=TabId.HANGAR):
                 yield HangarWidget(id='hangar-widget', service=self.hangar_service)
 
         yield Footer(show_command_palette=False)
@@ -74,8 +79,8 @@ class Maskirovka(App):
             return True
 
         tabs = self.query_one('#main-tabs', TabbedContent)
-        is_search_active = tabs.active == 'search-tab'
-        is_hangar_active = tabs.active == 'hangar-tab'
+        is_search_active = tabs.active == TabId.SEARCH
+        is_hangar_active = tabs.active == TabId.HANGAR
 
         if action in (
                 'search',
@@ -112,15 +117,28 @@ class Maskirovka(App):
 
     def on_tabbed_content_tab_activated(self, event: TabbedContent.TabActivated) -> None:
         self.refresh_bindings()
-        if event.tab.id == 'hangar-tab':
+        if event.tab.id == TabId.HANGAR:
             hangar_widget = self.query_one('#hangar-widget', HangarWidget)
             hangar_widget.refresh_data()
 
-    def on_unit_selected(self, event: UnitSelected) -> None:
-        if isinstance(event._sender, SearchWidget):
-            self._handle_search_unit_selected(event)
-        elif isinstance(event._sender, HangarWidget):
-            self._handle_hangar_unit_selected(event)
+    def on_search_unit_selected(self, event: SearchUnitSelected) -> None:
+        unit = next((u for u in self.state.units if str(u.unit_id) == event.unit_id), None)
+        if unit:
+            self.push_screen(UnitDetailsScreen(
+                unit=unit,
+                hangar_service=self.hangar_service,
+                is_in_hangar=False
+            ))
+
+    def on_hangar_unit_selected(self, event: HangarUnitSelected) -> None:
+        hangar_unit = self.hangar_service.get_by_unit_id(int(event.unit_id))
+        if hangar_unit:
+            self.push_screen(UnitDetailsScreen(
+                unit=hangar_unit.unit,
+                hangar_service=self.hangar_service,
+                initial_comment=event.comment,
+                is_in_hangar=True
+            ))
 
     def on_add_to_hangar(self, event: AddToHangar) -> None:
         unit = next((u for u in self.state.units if str(u.unit_id) == event.unit_id), None)
@@ -388,25 +406,6 @@ class Maskirovka(App):
             await self.push_screen(
                 ErrorScreen(title=f'{type(e).__name__}: {e}')
             )
-
-    def _handle_search_unit_selected(self, event: UnitSelected) -> None:
-        unit = next((u for u in self.state.units if str(u.unit_id) == event.unit_id), None)
-        if unit:
-            self.push_screen(UnitDetailsScreen(
-                unit=unit,
-                hangar_service=self.hangar_service,
-                is_in_hangar=False
-            ))
-
-    def _handle_hangar_unit_selected(self, event: UnitSelected) -> None:
-        hangar_unit = self.hangar_service.get_by_unit_id(int(event.unit_id))
-        if hangar_unit:
-            self.push_screen(UnitDetailsScreen(
-                unit=hangar_unit.unit,
-                hangar_service=self.hangar_service,
-                initial_comment=event.comment,
-                is_in_hangar=True
-            ))
 
 
 if __name__ == '__main__':

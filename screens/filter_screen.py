@@ -114,48 +114,59 @@ class FilterScreen(ModalScreen):
                 yield Button('Отмена', id='cancel')
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
-        if event.button.id == 'apply':
-            filters = {}
-
-            title = self._get_input_value('filter-title-input')
-            if title:
-                filters['title'] = title
-
-            unit_type = self._get_select_value('filter-unit-type-select')
-            if unit_type and unit_type != self.ALL_VALUE:
-                filters['unit_type'] = unit_type
-
-            role = self._get_select_value('filter-role-select')
-            if role and role != self.ALL_VALUE:
-                filters['role'] = role
-
-            specials = self._get_input_value('filter-specials-input')
-            if specials:
-                filters['specials'] = specials
-                specials_mode = self._get_select_value('filter-specials-mode')
-                filters['specials_mode'] = specials_mode if specials_mode else 'or'
-
-            for field_key, _ in self.NUMERIC_FIELDS:
-                value = self._get_input_value(f'filter-{field_key}-input')
-                if value:
-                    try:
-                        filters[field_key] = int(value)
-                        mode = self._get_select_value(f'filter-{field_key}-mode')
-                        if mode:
-                            filters[f'{field_key}_mode'] = mode
-                    except ValueError:
-                        pass
-
-            self.dismiss(filters)
-
-        elif event.button.id == 'reset':
-            self.dismiss({})
-
-        elif event.button.id == 'cancel':
-            self.dismiss(None)
+        match event.button.id:
+            case 'apply':
+                self._apply_filters()
+            case 'reset':
+                self._reset_filters()
+            case 'cancel':
+                self._cancel()
 
     def action_cancel(self) -> None:
         self.dismiss(None)
+
+    def _apply_filters(self) -> None:
+        filters = self._collect_filters()
+        self.dismiss(filters)
+
+    def _reset_filters(self) -> None:
+        self.dismiss({})
+
+    def _cancel(self) -> None:
+        self.dismiss(None)
+
+    def _collect_filters(self) -> dict:
+        filters: dict = {}
+
+        if title := self._get_input_value('filter-title-input'):
+            filters['title'] = title
+
+        if unit_type := self._get_select_value('filter-unit-type-select'):
+            if unit_type != self.ALL_VALUE:
+                filters['unit_type'] = unit_type
+
+        if role := self._get_select_value('filter-role-select'):
+            if role != self.ALL_VALUE:
+                filters['role'] = role
+
+        if specials := self._get_input_value('filter-specials-input'):
+            filters['specials'] = specials
+            filters['specials_mode'] = self._get_select_value('filter-specials-mode') or 'or'
+
+        for field_key, _ in self.NUMERIC_FIELDS:
+            if value := self._get_input_value(f'filter-{field_key}-input'):
+                if num_value := self._parse_int(value):
+                    filters[field_key] = num_value
+                    if mode := self._get_select_value(f'filter-{field_key}-mode'):
+                        filters[f'{field_key}_mode'] = mode
+
+        return filters
+
+    def _parse_int(self, value: str) -> int | None:
+        try:
+            return int(value)
+        except ValueError:
+            return None
 
     def _get_select_initial_value(self, key: str, options: list[tuple[str, str]]) -> str:
         value = self.current_filters.get(key)

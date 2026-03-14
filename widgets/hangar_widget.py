@@ -6,7 +6,7 @@ from textual.reactive import reactive
 from textual.widgets import DataTable
 
 from domains.hangar import GroupedUnits, HangarService, HangarServiceDelegate, HangarUnit
-from domains.messages import UnitSelected
+from domains.messages import HangarUnitSelected
 
 
 class HangarWidget(Container):
@@ -150,4 +150,4 @@ class HangarWidget(Container):
     def _open_unit_details(self, unit_id: str) -> None:
         hangar_unit = self.service.get_by_unit_id(int(unit_id))
         if hangar_unit:
-            self.post_message(UnitSelected(unit_id, hangar_unit.comment))
+            self.post_message(HangarUnitSelected(unit_id, hangar_unit.comment))
