@@ -3,9 +3,10 @@ from typing import ClassVar
 from rich.text import Text
 from textual.app import ComposeResult
 from textual.containers import Container, Vertical, Horizontal
-from textual.message import Message
 from textual.reactive import reactive
 from textual.widgets import RadioSet, DataTable, SelectionList, Static, Label
+
+from domains.messages import UnitSelected, AddToHangar
 
 
 class SearchWidget(Container):
@@ -18,16 +19,6 @@ class SearchWidget(Container):
 
     current_block: reactive[str] = reactive('eras')
     _row_unit_ids: list[int] = []
-
-    class UnitSelected(Message):
-        def __init__(self, unit_id: str) -> None:
-            self.unit_id = unit_id
-            super().__init__()
-
-    class AddToHangar(Message):
-        def __init__(self, unit_id: str) -> None:
-            self.unit_id = unit_id
-            super().__init__()
 
     def compose(self) -> ComposeResult:
         yield Horizontal(
@@ -100,7 +91,7 @@ class SearchWidget(Container):
         self.current_block = 'main-content'
 
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
-        self.post_message(self.UnitSelected(event.row_key.value))
+        self.post_message(UnitSelected(event.row_key.value))
 
     def setup_table(self) -> None:
         table = self.query_one('#main-content', DataTable)
@@ -167,4 +158,4 @@ class SearchWidget(Container):
         table = self.query_one('#main-content', DataTable)
         if table.cursor_row is not None and table.cursor_row < len(self._row_unit_ids):
             unit_id = self._row_unit_ids[table.cursor_row]
-            self.post_message(self.AddToHangar(str(unit_id)))
+            self.post_message(AddToHangar(str(unit_id)))

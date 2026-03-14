@@ -8,6 +8,7 @@ from domains.hangar import (
     GroupedUnits,
 )
 from domains.api import ApiClient, ApiError
+from domains.messages import UnitSelected, AddToHangar, HangarUpdated, QuantityChanged
 
 __all__ = [
     'Era',
@@ -24,4 +25,8 @@ __all__ = [
     'GroupedUnits',
     'ApiClient',
     'ApiError',
+    'UnitSelected',
+    'AddToHangar',
+    'HangarUpdated',
+    'QuantityChanged',
 ]

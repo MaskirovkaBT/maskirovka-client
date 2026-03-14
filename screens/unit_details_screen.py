@@ -5,7 +5,7 @@ from textual.screen import ModalScreen
 from textual.widgets import Label, Button, Link, Input, Static
 
 from domains import Unit, HangarService
-from widgets.search_widget import SearchWidget
+from domains.messages import AddToHangar
 
 
 class UnitDetailsScreen(ModalScreen):
@@ -17,14 +17,14 @@ class UnitDetailsScreen(ModalScreen):
     def __init__(
         self,
         unit: Unit,
-        hangar_service: HangarService | None = None,
+        hangar_service: HangarService,
         initial_comment: str = '',
         is_in_hangar: bool = True,
         **kwargs
     ):
         super().__init__(**kwargs)
         self.unit = unit
-        self.hangar_service = hangar_service or HangarService()
+        self.hangar_service = hangar_service
         self.initial_comment = initial_comment
         self.is_in_hangar = is_in_hangar
         self._hangar_unit = self.hangar_service.get_by_unit_id(unit.unit_id)
@@ -87,7 +87,7 @@ class UnitDetailsScreen(ModalScreen):
                 f'Комментарий: {self._hangar_unit.comment or 'нет'}'
             )
 
-        self.post_message(SearchWidget.AddToHangar(str(self.unit.unit_id)))
+        self.post_message(AddToHangar(str(self.unit.unit_id)))
         self.dismiss()
 
     def _save_comment(self) -> None:

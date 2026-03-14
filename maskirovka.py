@@ -6,7 +6,10 @@ from textual.app import App, ComposeResult
 from textual.coordinate import Coordinate
 from textual.widgets import Header, Footer, Label, TabbedContent, TabPane, DataTable
 
-from domains import ApiError, HangarService, extract_base_name, SearchState, UnitService
+from domains import ApiError, HangarService, extract_base_name, SearchState
+from domains.api import ApiClient
+from domains.messages import UnitSelected, AddToHangar
+from domains.units import UnitService
 from screens.error_screen import ErrorScreen
 from screens.filter_screen import FilterScreen
 from screens.sort_screen import SortScreen
@@ -37,11 +40,15 @@ class Maskirovka(App):
     def __init__(self):
         super().__init__()
 
+        self.api_client = ApiClient()
         self.state = SearchState()
-        self.service = UnitService()
+        self.service = UnitService(api=self.api_client)
         self.hangar_service = HangarService()
         self.splash_screen = SplashScreen()
         self.exception_on_splash: Exception | None = None
+
+    async def on_unmount(self) -> None:
+        await self.service.close()
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True, icon='≡')
@@ -109,42 +116,31 @@ class Maskirovka(App):
             hangar_widget = self.query_one('#hangar-widget', HangarWidget)
             hangar_widget.refresh_data()
 
-    def on_search_widget_unit_selected(self, event: SearchWidget.UnitSelected) -> None:
+    def on_unit_selected(self, event: UnitSelected) -> None:
+        if isinstance(event._sender, SearchWidget):
+            self._handle_search_unit_selected(event)
+        elif isinstance(event._sender, HangarWidget):
+            self._handle_hangar_unit_selected(event)
+
+    def on_add_to_hangar(self, event: AddToHangar) -> None:
         unit = next((u for u in self.state.units if str(u.unit_id) == event.unit_id), None)
-        if unit:
-            self.push_screen(UnitDetailsScreen(
-                unit=unit,
-                hangar_service=self.hangar_service,
-                is_in_hangar=False
-            ))
+        if not unit:
+            return
 
-    def on_search_widget_add_to_hangar(self, event: SearchWidget.AddToHangar) -> None:
-        unit = next((u for u in self.state.units if str(u.unit_id) == event.unit_id), None)
-        if unit:
-            self.hangar_service.add_unit(unit, quantity=1)
-            self.notify(f'{unit.title} добавлен в ангар!')
-            hangar_widget = self.query_one('#hangar-widget', HangarWidget)
-            hangar_widget.refresh_data()
+        self.hangar_service.add_unit(unit, quantity=1)
+        self.notify(f'{unit.title} добавлен в ангар!')
+        hangar_widget = self.query_one('#hangar-widget', HangarWidget)
+        hangar_widget.refresh_data()
 
-            title_text = Text(unit.title)
-            title_text.stylize('bold blink2 green')
+        title_text = Text(unit.title)
+        title_text.stylize('bold blink2 green')
 
-            table = self.query_one('#main-content', DataTable)
-            table.update_cell(
-                row_key=event.unit_id,
-                column_key=SearchWidget.COLUMN_TITLE_KEY,
-                value=title_text
-            )
-
-    def on_hangar_widget_unit_selected(self, event: HangarWidget.UnitSelected) -> None:
-        hangar_unit = self.hangar_service.get_by_unit_id(int(event.unit_id))
-        if hangar_unit:
-            self.push_screen(UnitDetailsScreen(
-                unit=hangar_unit.unit,
-                hangar_service=self.hangar_service,
-                initial_comment=event.comment,
-                is_in_hangar=True
-            ))
+        table = self.query_one('#main-content', DataTable)
+        table.update_cell(
+            row_key=event.unit_id,
+            column_key=SearchWidget.COLUMN_TITLE_KEY,
+            value=title_text
+        )
 
     async def action_add_to_hangar(self) -> None:
         search_widget = self.query_one('#search-widget', SearchWidget)
@@ -392,6 +388,25 @@ class Maskirovka(App):
             await self.push_screen(
                 ErrorScreen(title=f'{type(e).__name__}: {e}')
             )
+
+    def _handle_search_unit_selected(self, event: UnitSelected) -> None:
+        unit = next((u for u in self.state.units if str(u.unit_id) == event.unit_id), None)
+        if unit:
+            self.push_screen(UnitDetailsScreen(
+                unit=unit,
+                hangar_service=self.hangar_service,
+                is_in_hangar=False
+            ))
+
+    def _handle_hangar_unit_selected(self, event: UnitSelected) -> None:
+        hangar_unit = self.hangar_service.get_by_unit_id(int(event.unit_id))
+        if hangar_unit:
+            self.push_screen(UnitDetailsScreen(
+                unit=hangar_unit.unit,
+                hangar_service=self.hangar_service,
+                initial_comment=event.comment,
+                is_in_hangar=True
+            ))
 
 
 if __name__ == '__main__':

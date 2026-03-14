@@ -16,6 +16,10 @@ class ApiError(Exception):
 class ApiClient:
     def __init__(self, base_url: str | None = None):
         self.base_url = base_url or settings.api_base_url
+        self._client = httpx.AsyncClient(timeout=30.0)
+
+    async def close(self) -> None:
+        await self._client.aclose()
 
     async def _get(
         self,
@@ -23,18 +27,16 @@ class ApiClient:
         params: dict | None = None,
         headers: dict | None = None
     ) -> dict:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                f'{self.base_url}{endpoint}',
-                params=params,
-                headers=headers,
-                timeout=30.0
-            )
-            try:
-                response.raise_for_status()
-            except httpx.HTTPStatusError as e:
-                raise ApiError(f'HTTP {e.response.status_code}: {e.response.text}') from e
-            return response.json()
+        response = await self._client.get(
+            f'{self.base_url}{endpoint}',
+            params=params,
+            headers=headers
+        )
+        try:
+            response.raise_for_status()
+        except httpx.HTTPStatusError as e:
+            raise ApiError(f'HTTP {e.response.status_code}: {e.response.text}') from e
+        return response.json()
 
     async def _fetch_list(
         self,

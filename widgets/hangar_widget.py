@@ -2,11 +2,11 @@ from typing import ClassVar
 
 from textual.app import ComposeResult
 from textual.containers import Container
-from textual.message import Message
 from textual.reactive import reactive
 from textual.widgets import DataTable
 
 from domains.hangar import GroupedUnits, HangarService, HangarServiceDelegate, HangarUnit
+from domains.messages import UnitSelected
 
 
 class HangarWidget(Container):
@@ -16,15 +16,9 @@ class HangarWidget(Container):
 
     _hangar_units: reactive[list[HangarUnit]] = reactive([])
 
-    class UnitSelected(Message):
-        def __init__(self, unit_id: str, comment: str = '') -> None:
-            self.unit_id = unit_id
-            self.comment = comment
-            super().__init__()
-
-    def __init__(self, service: HangarService | None = None, **kwargs):
+    def __init__(self, service: HangarService, **kwargs):
         super().__init__(**kwargs)
-        self.service = service or HangarService()
+        self.service = service
         self._unit_ids: list[int] = []
         self._grouped: list[GroupedUnits] = []
         self._expanded_groups: set[str] = set()
@@ -156,4 +150,4 @@ class HangarWidget(Container):
     def _open_unit_details(self, unit_id: str) -> None:
         hangar_unit = self.service.get_by_unit_id(int(unit_id))
         if hangar_unit:
-            self.post_message(self.UnitSelected(unit_id, hangar_unit.comment))
+            self.post_message(UnitSelected(unit_id, hangar_unit.comment))

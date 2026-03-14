@@ -5,8 +5,11 @@ from domains.units.models import Unit
 
 
 class UnitService:
-    def __init__(self) -> None:
-        self.api = ApiClient()
+    def __init__(self, api: ApiClient | None = None) -> None:
+        self.api = api or ApiClient()
+
+    async def close(self) -> None:
+        await self.api.close()
 
     async def load_reference_data(self) -> tuple[list, list, list, list]:
         results = await asyncio.gather(
