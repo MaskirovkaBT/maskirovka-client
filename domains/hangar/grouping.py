@@ -1,4 +1,4 @@
-from domains.hangar_unit import HangarUnit
+from domains.hangar.models import HangarUnit
 
 
 class GroupedUnits:

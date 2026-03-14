@@ -1,13 +1,13 @@
 import asyncio
 
-from domains.api_client import ApiClient
-from domains.unit import Unit
+from domains.api import ApiClient
+from domains.units.models import Unit
 
 
 class UnitService:
     def __init__(self) -> None:
         self.api = ApiClient()
-    
+
     async def load_reference_data(self) -> tuple[list, list, list, list]:
         results = await asyncio.gather(
             self.api.get_eras(),
@@ -16,7 +16,7 @@ class UnitService:
             self.api.get_roles()
         )
         return results
-    
+
     async def search_units(
         self,
         era_id: int,

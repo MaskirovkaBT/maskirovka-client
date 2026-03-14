@@ -6,11 +6,7 @@ from textual.app import App, ComposeResult
 from textual.coordinate import Coordinate
 from textual.widgets import Header, Footer, Label, TabbedContent, TabPane, DataTable
 
-from domains.api_client import ApiError
-from domains.hangar_service import HangarService
-from domains.hangar_unit import extract_base_name
-from domains.search_state import SearchState
-from domains.unit_service import UnitService
+from domains import ApiError, HangarService, extract_base_name, SearchState, UnitService
 from screens.error_screen import ErrorScreen
 from screens.filter_screen import FilterScreen
 from screens.sort_screen import SortScreen
@@ -126,7 +122,7 @@ class Maskirovka(App):
         unit = next((u for u in self.state.units if str(u.unit_id) == event.unit_id), None)
         if unit:
             self.hangar_service.add_unit(unit, quantity=1)
-            self.notify(f"{unit.title} добавлен в ангар!")
+            self.notify(f'{unit.title} добавлен в ангар!')
             hangar_widget = self.query_one('#hangar-widget', HangarWidget)
             hangar_widget.refresh_data()
 
@@ -213,14 +209,14 @@ class Maskirovka(App):
         self.hangar_service.increase_quantity(unit_id=int(key_value))
 
         prefix = HangarWidget.GROUPED_UNIT_PREFIX if cell_value.startswith(HangarWidget.GROUPED_UNIT_PREFIX) else ''
-        table.update_cell_at(coordinate, f"{prefix}{str(current_qty + 1)}")
+        table.update_cell_at(coordinate, f'{prefix}{str(current_qty + 1)}')
 
         if prefix == HangarWidget.GROUPED_UNIT_PREFIX:
             cell_title_value = table.get_cell_at(Coordinate(row_index, 1))
             match = re.search(r'.+?([()\s\w-]+)$', cell_title_value, flags=re.IGNORECASE)
             if match:
                 base_name = extract_base_name(match.group(1).strip())
-                group_row_key = f"{HangarWidget.GROUP_UNITS_PREFIX}{base_name}"
+                group_row_key = f'{HangarWidget.GROUP_UNITS_PREFIX}{base_name}'
                 group_values = table.get_row(row_key=group_row_key)
                 if group_values:
                     group_qty = int(group_values[0])
@@ -255,8 +251,8 @@ class Maskirovka(App):
 
         def update_group_row(match: re.Match[str]):
             base_name = match.group(1).strip()
-            group_row_key = f"{HangarWidget.GROUP_UNITS_PREFIX}" \
-                            f"{extract_base_name(base_name)}"
+            group_row_key = f'{HangarWidget.GROUP_UNITS_PREFIX}' \
+                            f'{extract_base_name(base_name)}'
             group_values = table.get_row(row_key=group_row_key)
             if group_values:
                 group_qty = int(group_values[0])
@@ -296,7 +292,7 @@ class Maskirovka(App):
                 hangar_widget = self.query_one('#hangar-widget', HangarWidget)
                 hangar_widget.refresh_data()
         else:
-            table.update_cell_at(coordinate, f"{prefix}{str(current_qty - 1)}")
+            table.update_cell_at(coordinate, f'{prefix}{str(current_qty - 1)}')
 
             if prefix == HangarWidget.GROUPED_UNIT_PREFIX:
                 if match:

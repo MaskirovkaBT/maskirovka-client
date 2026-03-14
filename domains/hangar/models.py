@@ -1,4 +1,4 @@
-from domains.unit import Unit
+from domains.units.models import Unit
 
 
 def extract_base_name(title: str) -> str:
@@ -14,12 +14,12 @@ def extract_base_name(title: str) -> str:
 
 class HangarUnit:
     def __init__(
-            self,
-            unit: Unit,
-            quantity: int = 1,
-            comment: str = '',
-            unit_id: int | None = None,
-            base_name: str | None = None
+        self,
+        unit: Unit,
+        quantity: int = 1,
+        comment: str = '',
+        unit_id: int | None = None,
+        base_name: str | None = None
     ):
         self.unit = unit
         self.quantity = quantity

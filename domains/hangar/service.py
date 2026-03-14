@@ -3,15 +3,14 @@ import weakref
 from pathlib import Path
 from typing import Protocol, runtime_checkable, Optional
 
-from domains.grouped_units import GroupedUnits
-from domains.hangar_unit import HangarUnit, extract_base_name
-from domains.unit import Unit
+from domains.hangar.grouping import GroupedUnits
+from domains.hangar.models import HangarUnit, extract_base_name
+from domains.units.models import Unit
 
 
 @runtime_checkable
 class HangarServiceDelegate(Protocol):
     def service_did_change_unit_quantity(self, service: 'HangarService', unit_id: int) -> None:
-        """Изменили количество юнита"""
         pass
 
 

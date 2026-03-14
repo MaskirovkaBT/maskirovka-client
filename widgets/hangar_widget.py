@@ -6,9 +6,7 @@ from textual.message import Message
 from textual.reactive import reactive
 from textual.widgets import DataTable
 
-from domains.grouped_units import GroupedUnits
-from domains.hangar_service import HangarService, HangarServiceDelegate
-from domains.hangar_unit import HangarUnit
+from domains.hangar import GroupedUnits, HangarService, HangarServiceDelegate, HangarUnit
 
 
 class HangarWidget(Container):

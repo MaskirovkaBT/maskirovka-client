@@ -3,12 +3,10 @@ from typing import TypeVar
 import httpx
 from pydantic import TypeAdapter
 
-from domains.era import Era
-from domains.faction import Faction
-from domains.settings import settings
-from domains.unit import Unit
+from domains.common import Era, Faction, settings
+from domains.units.models import Unit
 
-T = TypeVar("T")
+T = TypeVar('T')
 
 
 class ApiError(Exception):
@@ -27,7 +25,7 @@ class ApiClient:
     ) -> dict:
         async with httpx.AsyncClient() as client:
             response = await client.get(
-                f"{self.base_url}{endpoint}",
+                f'{self.base_url}{endpoint}',
                 params=params,
                 headers=headers,
                 timeout=30.0
@@ -48,17 +46,17 @@ class ApiClient:
         return items
 
     async def get_eras(self) -> list[Era]:
-        return await self._fetch_list("/eras", Era)
+        return await self._fetch_list('/eras', Era)
 
     async def get_factions(self) -> list[Faction]:
-        return await self._fetch_list("/factions", Faction)
+        return await self._fetch_list('/factions', Faction)
 
     async def get_types(self) -> list[str]:
-        data = await self._get("/types")
+        data = await self._get('/types')
         return TypeAdapter(list[str]).validate_python(data)
 
     async def get_roles(self) -> list[str]:
-        data = await self._get("/roles")
+        data = await self._get('/roles')
         return TypeAdapter(list[str]).validate_python(data)
 
     async def get_units(
@@ -70,15 +68,15 @@ class ApiClient:
         sort_order: str | None = None,
         filters: dict | None = None
     ) -> tuple[list[Unit], int, int]:
-        params: dict = {"era_id": era_id, "page": page}
+        params: dict = {'era_id': era_id, 'page': page}
         headers: dict = {}
 
-        params["faction_id"] = faction_ids
+        params['faction_id'] = faction_ids
 
         if sort_by is not None:
-            params["sort_by"] = sort_by
+            params['sort_by'] = sort_by
         if sort_order is not None:
-            params["sort_order"] = sort_order
+            params['sort_order'] = sort_order
 
         if filters:
             for key in ['unit_type', 'title', 'role', 'specials']:
@@ -100,12 +98,12 @@ class ApiClient:
                     header_name = f'X-{field.capitalize()}-Mode'
                     headers[header_name] = filters[mode_key]
 
-        data = await self._get("/units", params=params, headers=headers if headers else None)
+        data = await self._get('/units', params=params, headers=headers if headers else None)
 
-        items = data.get("items", [])
+        items = data.get('items', [])
         units = TypeAdapter(list[Unit]).validate_python(items)
 
-        current_page = data.get("page", page)
-        total_pages = data.get("pages", 1)
+        current_page = data.get('page', page)
+        total_pages = data.get('pages', 1)
 
         return units, current_page, total_pages
