@@ -49,7 +49,10 @@ class HangarService:
     def is_variants_exists(self, for_model: str) -> bool:
         grouped_units = self.get_grouped_units()
         model_base_name = extract_base_name(for_model)
-        return any(u.base_name == model_base_name for u in grouped_units)
+        if group := next((u for u in grouped_units if u.base_name == model_base_name), None):
+            return len(group.units) > 1
+
+        return False
 
     def get_grouped_units(self) -> list[GroupedUnits]:
         groups: dict[str, list[HangarUnit]] = {}

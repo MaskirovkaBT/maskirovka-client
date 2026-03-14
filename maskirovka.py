@@ -1,12 +1,9 @@
-import re
-
 from rich.text import Text
 from textual import work
 from textual.app import App, ComposeResult
-from textual.coordinate import Coordinate
-from textual.widgets import Header, Footer, Label, TabbedContent, TabPane, DataTable
+from textual.widgets import Header, Footer, Label, TabbedContent, TabPane, DataTable, RadioButton
 
-from domains import ApiError, HangarService, extract_base_name, SearchState
+from domains import ApiError, HangarService, SearchState
 from domains.api import ApiClient
 from domains.messages import SearchUnitSelected, HangarUnitSelected, AddToHangar
 from domains.units import UnitService
@@ -15,6 +12,7 @@ from screens.filter_screen import FilterScreen
 from screens.sort_screen import SortScreen
 from screens.splash_screen import SplashScreen
 from screens.unit_details_screen import UnitDetailsScreen
+from widgets.hangar_table_adapter import HangarTableAdapter
 from widgets.hangar_widget import HangarWidget
 from widgets.search_widget import SearchWidget
 
@@ -101,14 +99,10 @@ class Maskirovka(App):
                 'decrease_units',
         ):
             table = self.query_one('#hangar-table', DataTable)
-            row_index = table.cursor_row
+            adapter = HangarTableAdapter(table, self.hangar_service)
+            info = adapter.get_unit_info_at_cursor()
 
-            if row_index is None or row_index < 0 or not table.rows:
-                return is_hangar_active
-
-            row_key = table.ordered_rows[row_index].key
-            key_value = str(row_key.value)
-            if (key_value.startswith(HangarWidget.GROUP_UNITS_PREFIX) or key_value == 'empty') and is_hangar_active:
+            if info is None and is_hangar_active:
                 return False
 
             return is_hangar_active
@@ -207,110 +201,46 @@ class Maskirovka(App):
 
     def action_increase_units(self) -> None:
         table = self.query_one('#hangar-table', DataTable)
-        row_index = table.cursor_row
-        if row_index is None or row_index < 0:
+        adapter = HangarTableAdapter(table, self.hangar_service)
+
+        info = adapter.get_unit_info_at_cursor()
+        if info is None:
             return
 
-        row_key = table.ordered_rows[row_index].key
-        key_value = str(row_key.value)
-        if key_value.startswith(HangarWidget.GROUP_UNITS_PREFIX):
-            return
-
-        coordinate = Coordinate(row_index, 0)
-        cell_value = table.get_cell_at(coordinate)
-        current_qty = int(cell_value)
-
-        self.hangar_service.increase_quantity(unit_id=int(key_value))
-
-        prefix = HangarWidget.GROUPED_UNIT_PREFIX if cell_value.startswith(HangarWidget.GROUPED_UNIT_PREFIX) else ''
-        table.update_cell_at(coordinate, f'{prefix}{str(current_qty + 1)}')
-
-        if prefix == HangarWidget.GROUPED_UNIT_PREFIX:
-            cell_title_value = table.get_cell_at(Coordinate(row_index, 1))
-            match = re.search(r'.+?([()\s\w-]+)$', cell_title_value, flags=re.IGNORECASE)
-            if match:
-                base_name = extract_base_name(match.group(1).strip())
-                group_row_key = f'{HangarWidget.GROUP_UNITS_PREFIX}{base_name}'
-                group_values = table.get_row(row_key=group_row_key)
-                if group_values:
-                    group_qty = int(group_values[0])
-                    if group_qty > 0:
-                        table.update_cell(
-                            row_key=group_row_key,
-                            column_key=HangarWidget.COLUMN_QTY_KEY,
-                            value=str(group_qty + 1),
-                            update_width=True
-                        )
+        unit_id, current_qty, _ = info
+        self.hangar_service.increase_quantity(unit_id)
+        adapter.increase_quantity(table.cursor_row, current_qty)
 
     def action_decrease_units(self) -> None:
         table = self.query_one('#hangar-table', DataTable)
-        row_index = table.cursor_row
-        if row_index is None or row_index < 0:
+        adapter = HangarTableAdapter(table, self.hangar_service)
+
+        info = adapter.get_unit_info_at_cursor()
+        if info is None:
             return
 
-        row_key = table.ordered_rows[row_index].key
-        key_value = str(row_key.value)
-        if key_value.startswith(HangarWidget.GROUP_UNITS_PREFIX):
+        unit_id, current_qty, title = info
+        self.hangar_service.decrease_quantity(unit_id)
+        was_removed = adapter.decrease_quantity(table.cursor_row, current_qty)
+
+        if was_removed:
+            self._reset_search_table_style(unit_id)
+            adapter.cleanup_group(full_title=title)
+
+        if not table.rows:
+            adapter.refresh()
+
+    def _reset_search_table_style(self, unit_id: int) -> None:
+        unit = next((u for u in self.state.units if u.unit_id == unit_id), None)
+        if not unit:
             return
 
-        coordinate = Coordinate(row_index, 0)
-        cell_value = table.get_cell_at(coordinate)
-        current_qty = int(cell_value)
-
-        self.hangar_service.decrease_quantity(unit_id=int(key_value))
-
-        prefix = HangarWidget.GROUPED_UNIT_PREFIX if cell_value.startswith(HangarWidget.GROUPED_UNIT_PREFIX) else ''
-        cell_title_value = table.get_cell_at(Coordinate(row_index, 1))
-        match = re.search(r'.+?([()\s\w-]+)$', cell_title_value, flags=re.IGNORECASE)
-
-        def update_group_row(match: re.Match[str]):
-            base_name = match.group(1).strip()
-            group_row_key = f'{HangarWidget.GROUP_UNITS_PREFIX}' \
-                            f'{extract_base_name(base_name)}'
-            group_values = table.get_row(row_key=group_row_key)
-            if group_values:
-                group_qty = int(group_values[0])
-                if group_qty > 0:
-                    table.update_cell(
-                        row_key=group_row_key,
-                        column_key=HangarWidget.COLUMN_QTY_KEY,
-                        value=str(group_qty - 1),
-                        update_width=True
-                    )
-
-        if (current_qty - 1) <= 0:
-            table.remove_row(row_key)
-
-            unit = next((u for u in self.state.units if u.unit_id == int(key_value)), None)
-            if unit:
-                search_table = self.query_one('#main-content', DataTable)
-                search_table.update_cell(
-                    row_key=str(unit.unit_id),
-                    column_key=SearchWidget.COLUMN_TITLE_KEY,
-                    value=unit.title
-                )
-
-            if prefix == HangarWidget.GROUPED_UNIT_PREFIX:
-                if match:
-                    base_name = match.group(1).strip()
-                    has_group = self.hangar_service.is_variants_exists(
-                        for_model=base_name
-                    )
-                    if not has_group and (row_index - 1) >= 0:
-                        group_row_key = table.ordered_rows[row_index - 1].key
-                        table.remove_row(group_row_key)
-                    else:
-                        update_group_row(match)
-
-            if not table.rows:
-                hangar_widget = self.query_one('#hangar-widget', HangarWidget)
-                hangar_widget.refresh_data()
-        else:
-            table.update_cell_at(coordinate, f'{prefix}{str(current_qty - 1)}')
-
-            if prefix == HangarWidget.GROUPED_UNIT_PREFIX:
-                if match:
-                    update_group_row(match)
+        search_table = self.query_one('#main-content', DataTable)
+        search_table.update_cell(
+            row_key=str(unit.unit_id),
+            column_key=SearchWidget.COLUMN_TITLE_KEY,
+            value=unit.title
+        )
 
     @work(exclusive=False)
     async def _load_initial_data(self) -> None:
@@ -330,7 +260,6 @@ class Maskirovka(App):
 
         radio_set = search_widget.query_one('#eras')
         for item in self.state.eras:
-            from textual.widgets import RadioButton
             radio_set.mount(RadioButton(item.title))
 
         selection_list = search_widget.query_one('#factions')

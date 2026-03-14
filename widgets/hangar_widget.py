@@ -7,12 +7,14 @@ from textual.widgets import DataTable
 
 from domains.hangar import GroupedUnits, HangarService, HangarServiceDelegate, HangarUnit
 from domains.messages import HangarUnitSelected
+from widgets.hangar_table_adapter import HangarTableAdapter
 
 
 class HangarWidget(Container):
     GROUPED_UNIT_PREFIX: ClassVar[str] = '  '
     GROUP_UNITS_PREFIX: ClassVar[str] = 'group:'
     COLUMN_QTY_KEY: ClassVar[str] = 'column_qty_key'
+    COLUMN_TITLE_KEY: ClassVar[str] = 'column_title_key'
 
     _hangar_units: reactive[list[HangarUnit]] = reactive([])
 
@@ -39,7 +41,7 @@ class HangarWidget(Container):
         table = self.query_one('#hangar-table', DataTable)
         table.add_columns(
             ('Кол-во', HangarWidget.COLUMN_QTY_KEY),
-            'Название',
+            ('Название', HangarWidget.COLUMN_TITLE_KEY),
             'Роль',
             'PV',
             'MV',
@@ -87,7 +89,7 @@ class HangarWidget(Container):
         self._unit_ids = []
 
         if not self._hangar_units:
-            table.add_row('—', '—', '-', '—', '—', '—', '—', '—', '—', '—', key='empty')
+            table.add_row('—', '—', '-', '—', '—', '—', '—', '—', '—', '—', key=HangarTableAdapter.EMPTY_KEY)
             return
 
         for group in self._grouped:
